@@ -18,9 +18,9 @@ module ElispParse.ElispParser () where
 
     type Parser = Parsec Void T.Text
 
-    data ElExpr = Quote Symbol
+    data ElExpr = Quote ElExpr
                 | Seq [ElExpr]
-                | Backquote Symbol
+                | Backquote ElExpr
                 | Form Symbol
         deriving Show
 
@@ -40,7 +40,7 @@ module ElispParse.ElispParser () where
     spaceConsumer = L.space space1 lineComment blockComment
      where
         lineComment = L.skipLineComment ";"
-        blockComment = pure ()
+        blockComment = empty
     lexeme :: forall a. Parser a -> Parser a
     lexeme = L.lexeme spaceConsumer
 
@@ -51,20 +51,20 @@ module ElispParse.ElispParser () where
     parens = between (symbol "(") (symbol ")")
 
     identifier :: Parser Identifier
-    identifier = Identifier <$> (lexeme  (p))
+    identifier = Identifier <$> (lexeme (p))
        where
         p = T.pack <$> (tokenToChunk (Proxy @String) <$> (letterChar <|> separatorChar <|> symbolChar)) |*> many alphaNumChar
         (|*>) = liftM2 (<>)
     -- identifier = undefined
 
     quote :: Parser ElExpr
-    quote = char '\'' *> expr
+    quote = Quote <$> (char '\'' *> expr)
 
     backquote :: Parser ElExpr
-    backquote = char '`' *> ((string "," <|> (string $ ",@")) *> expr)
+    backquote = Backquote <$> (char '`' *> expr)
 
     form :: Parser ElExpr
-    form = parens $ fmap (\(Identifier x) -> Form $ Symbol x) identifier
+    form = parens $ expr
 
     expr :: Parser ElExpr
     -- expr = undefined
@@ -73,9 +73,12 @@ module ElispParse.ElispParser () where
         f l = if length l == 1 then head l else Seq l
 
     expr' :: Parser ElExpr
-    expr' = backquote
+    expr' = form 
+        <|> backquote
         <|> quote
-        <|> form
+
+    
+    
 
     lispParser :: Parser ElExpr
     lispParser = between spaceConsumer eof expr
