@@ -19,14 +19,13 @@ module ElispParse.ElispParser () where
     type Parser = Parsec Void T.Text
 
     data ElExpr = Quote ElExpr
-                | Seq [ElExpr]
                 | Backquote ElExpr
-                | Form Symbol
+                | Form ElExpr
+                | Datum Symbol
+                | Seq [ElExpr]
         deriving Show
 
     newtype Symbol = Symbol T.Text
-        deriving Show
-    newtype Identifier = Identifier T.Text
         deriving Show
 
     specialForms :: [T.Text]
@@ -58,7 +57,7 @@ module ElispParse.ElispParser () where
     -- identifier = undefined
 
     quote :: Parser ElExpr
-    quote = Quote <$> (char '\'' *> expr)
+    quote = Quote <$> (char '\'' *> (_))
 
     backquote :: Parser ElExpr
     backquote = Backquote <$> (char '`' *> expr)
