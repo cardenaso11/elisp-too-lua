@@ -3,81 +3,70 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+-- {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module ElispParse.ElispParser () where
-    import qualified Data.Text as T
-    import Control.Monad
-    import Data.Monoid
-    import qualified Data.Functor.Identity
-    import Data.Void
-    import Data.Proxy
-    import Text.Megaparsec as M
-    import Text.Megaparsec.Char
-    import Text.Megaparsec.Expr
-    import qualified Text.Megaparsec.Char.Lexer as L
 
-    type Parser = Parsec Void T.Text
+import GHC.Generics
+import qualified Data.Text as T
+import Data.Hashable
+import qualified Data.HashMap.Strict as HM
+import Control.Monad
+import Control.Monad.ST.Strict
+import Data.STRef.Strict
+import Data.Monoid
+import qualified Data.Functor.Identity
+import Data.Void
+import Data.Proxy
+import Text.Megaparsec as M
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
-    data ElExpr = Quote ElExpr
-                | Backquote ElExpr
-                | Form ElExpr
-                | Datum Symbol
-                | Seq [ElExpr]
-        deriving Show
+import ElispParse.Common
+import ElispParse.NumberParser
 
-    newtype Symbol = Symbol T.Text
-        deriving Show
+parseProgram :: Parser ElVal
+parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
+    where
+        f (x:[]) = x
+        f xs = ElList xs
 
-    specialForms :: [T.Text]
-    specialForms = ["and", "catch", "cond", "condition-case", "defconst",
-        "defvar", "function", "if", "interactive", "lambda", "let", "let*",
-        "or", "prog1", "prog2", "progn", "quote", "save-current-buffer",
-        "save-excursion", "save-restriction", "setq", "setq-default",
-        "track-mouse", "unwind-protect", "while"]
+-- parseIdentifier :: Parser ElVal
+-- parseIdentifier = ElIdentifier . Identifier <$> lexeme (p <?> "identifier")
+--     where
+--     p = T.pack <$>
+--             (tokenToChunk (Proxy @String) <$> choice [letterChar, symbolChar]) -- apparently emacs lets you just start with numbers too
+--             |*> many alphaNumChar
+--     (|*>) = liftM2 (<>)
 
-    spaceConsumer :: Parser ()
-    spaceConsumer = L.space space1 lineComment blockComment
-     where
-        lineComment = L.skipLineComment ";"
-        blockComment = empty
-    lexeme :: forall a. Parser a -> Parser a
-    lexeme = L.lexeme spaceConsumer
+parseIdentifier :: Parser ElVal
+parseIdentifier = ElIdentifier . Identifier <$> lexeme (p <?> "identifier")
+    where
+    p = T.pack <$> many (choice [alphaNumChar, symbolChar]) -- might regret this if symbolchar conflicts with # reader syntax
 
-    symbol :: T.Text -> Parser Symbol
-    symbol = fmap Symbol . L.symbol spaceConsumer
+parseList :: Parser ElVal
+parseList = ElList <$> lexeme (parens (many expr) <?> "list")
 
-    parens :: forall a. Parser a -> Parser a
-    parens = between (symbol "(") (symbol ")")
+parseQuote :: Parser ElVal
+parseQuote = ElList <$> lexeme ((char '\'' *> parens (many expr)) <?> "quote")
 
-    identifier :: Parser Identifier
-    identifier = Identifier <$> (lexeme (p))
-       where
-        p = T.pack <$> (tokenToChunk (Proxy @String) <$> (letterChar <|> separatorChar <|> symbolChar)) |*> many alphaNumChar
-        (|*>) = liftM2 (<>)
-    -- identifier = undefined
 
-    quote :: Parser ElExpr
-    quote = Quote <$> (char '\'' *> (_))
+-- parseFloat :: Parser ElVal
+-- parseFloat = ElFloat <$> L.float
+-- parseFloat = ElFloat . read <$> lexeme getFloatString <?> "float"
+--     where
+--         getFloatString = some digitChar *> 
 
-    backquote :: Parser ElExpr
-    backquote = Backquote <$> (char '`' *> expr)
+parseString :: Parser ElVal
+parseString = ElString <$> lexeme (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"' <?> "string")
 
-    form :: Parser ElExpr
-    form = parens $ expr
-
-    expr :: Parser ElExpr
-    -- expr = undefined
-    expr = f <$> sepBy1 expr' space
-      where
-        f l = if length l == 1 then head l else Seq l
-
-    expr' :: Parser ElExpr
-    expr' = form 
-        <|> backquote
-        <|> quote
-
-    
-    
-
-    lispParser :: Parser ElExpr
-    lispParser = between spaceConsumer eof expr
+expr :: Parser ElVal
+expr = try parseQuote
+    <|> try parseList
+    <|> try parseIdentifier
+    -- <|> try parseInt
+    -- <|> try parseFloat
+    <|> try parseString

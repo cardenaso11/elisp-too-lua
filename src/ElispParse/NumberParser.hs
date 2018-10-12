@@ -1,0 +1,141 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE FlexibleContexts #-}
+-- these two are included entirely so i could write the nan&inf literals
+-- with an abstracted type signature while also not adding newline for
+-- each type signature. i cant just put the abstracted constrained type
+-- signature on the left hand side of each equation because ghc would
+-- need impredicative polymorphism to typecheck it.
+-- to be honest this is extremely unnecessary and dumb BUT
+-- i invested way too much time trying to get it to look pretty.
+-- so im not taking it out
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE LambdaCase #-}
+
+module ElispParse.NumberParser
+    ( parseFloat
+    , parseInt) where
+
+import GHC.Generics
+import qualified Data.Text as T
+import Data.Hashable
+import qualified Data.HashMap.Strict as HM
+import Control.Monad
+import Data.Monoid
+import Data.Maybe
+import Data.String
+import qualified Data.Functor.Identity
+import Data.Void
+import Data.Proxy
+import Text.Megaparsec as M
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
+
+import ElispParse.Common
+
+import Debug.Trace
+    
+data Sign where
+    Positive :: Sign
+    Negative :: Sign
+    
+    deriving (Show)
+
+newtype Radix where
+    Radix :: Int -> Radix
+    
+    deriving (Show)
+
+data FloatString = FloatString
+    {   integerPart :: T.Text
+    ,   fractionalPart :: Maybe T.Text
+    ,   exponentPart :: Maybe T.Text
+    }
+data ShouldRequireDigits = DoRequireFraction | DoNotRequireFraction
+
+type PString s = (IsString s) => s 
+
+nan = "NaN" :: PString s
+inf = "INF" :: PString s
+plus = '+' :: Char
+minus = '-' :: Char
+dot = '.' :: Char
+e = 'e' :: Char
+plusNan = fromString $ plus : nan :: PString s
+minusNan = fromString $ minus : nan :: PString s
+plusInf = fromString $ plus : inf :: PString s
+minusInf = fromString $ minus : inf :: PString s
+
+-- exactly two rules here:
+-- if it has an exponent, always float. this includes if preceded by dot w/o digits
+-- if it has a dot followed by at least one digit, or "NaN", or "INF", always float
+parseFloatString :: Parser FloatString
+parseFloatString = do
+    signText <- optional (oneOf [plus, minus])
+    integerText <- T.pack <$> some digitChar
+    let parseExponent = string' "e" |*> -- rewrite so exponent can have sign too, put sign into exponentpart, also move whole thing sign out of signpart into ingegerpartd
+                        option "" (T.singleton <$> oneOf [plus, minus]) |*>
+                        choice [T.pack <$> some digitChar, string nan, string inf]
+        parseFraction requireFraction =
+            (string $ T.singleton dot)
+            |*> ((case requireFraction of DoRequireFraction -> id; DoNotRequireFraction -> option "")
+                    (T.pack <$> some digitChar))
+        unaryThenBinary = (.) . (.)
+    let hasExponent = do
+                fractionalText <- (optional $ parseFraction DoNotRequireFraction)
+                exponentText <- parseExponent
+                pure $ FloatString integerText fractionalText (Just exponentText)
+        hasFractional = do
+                fractionalText <- parseFraction DoRequireFraction
+                exponentText <- optional $ parseExponent
+                pure $ FloatString integerText (Just fractionalText) exponentText 
+    choice [try hasExponent, try hasFractional]
+
+deriving instance Show FloatString
+-- instance Show FloatString where
+    -- show = T.unpack . renderFloatString
+
+renderFloatString :: FloatString -> T.Text -- maybe make this more elegant ?
+renderFloatString (FloatString integerText maybeFractionalText maybeExponentText) =
+    case maybeExponentText of
+        Just x  | safeTail x == nan -> nan
+                | safeTail x == plusNan -> plusNan
+                | safeTail x == minusNan -> minusNan
+                | safeTail x == inf -> inf
+                | safeTail x == plusInf -> plusInf
+                | safeTail x == minusInf -> minusInf
+        _ -> T.concat
+                [ integerText
+                , fromMaybe ".0" $ mfilter (/=T.singleton dot) maybeFractionalText -- elisp can handle N.eK, but haskell's read cannot
+                , fromMaybe (T.cons e "0") $ mfilter (/=T.singleton e) maybeExponentText -- might as well normalize exponent too
+                ]
+    where
+        safeTail = T.drop 1
+
+parseFloat :: Parser ElVal
+parseFloat = ElFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
+    where
+        readFloat = \case -- multiway if wouldnt make it shorter
+            x   | x == nan -> nanVal
+                | x == minusNan -> nanVal -- i THINK elisp doesnt do anything weird w nan sign,,, also i cannot figure out how to get -nan
+                | x == inf -> plusInfVal
+                | x == plusInf -> plusInfVal
+                | x == minusInf -> minusInfVal
+                | otherwise -> read @Double x
+        -- weird, but apparently haskell does not have nan or inf literals
+        nanVal = 0/0
+        plusInfVal = 1/0
+        minusInfVal = negate plusInfVal
+
+
+
+parseInt :: Parser ElVal -- TODO: this is temp test, parse radix & sign properly
+parseInt = ElInt . read <$> lexeme (some digitChar) <?> "int"
