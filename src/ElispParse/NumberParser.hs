@@ -29,9 +29,12 @@ import qualified Data.Text as T
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
 import Control.Monad
+import Control.Lens
 import Data.Monoid
 import Data.Maybe
+import Data.Char
 import Data.String
+import qualified Data.Map.Strict as M
 import qualified Data.Functor.Identity
 import Data.Void
 import Data.Proxy
@@ -46,11 +49,6 @@ import Debug.Trace
 data Sign where
     Positive :: Sign
     Negative :: Sign
-    
-    deriving (Show)
-
-newtype Radix where
-    Radix :: Int -> Radix
     
     deriving (Show)
 
@@ -74,12 +72,25 @@ minusNan = fromString $ minus : nan :: PString s
 plusInf = fromString $ plus : inf :: PString s
 minusInf = fromString $ minus : inf :: PString s
 
+parseSign :: Parser Sign
+parseSign = oneOf [plus, minus] >>= \x ->
+    if x == plus then pure Positive
+    else if x == minus then pure Negative
+    else mzero
+
+
+
+evalSign :: Sign -> Int -> Int
+evalSign = \case
+    Positive -> abs
+    Negative -> negate . abs
+
 -- exactly two rules here:
 -- if it has an exponent, always float. this includes if preceded by dot w/o digits
 -- if it has a dot followed by at least one digit, or "NaN", or "INF", always float
 parseFloatString :: Parser FloatString
 parseFloatString = do
-    signText <- optional (oneOf [plus, minus])
+    signText <- optional parseSign
     integerText <- T.pack <$> some digitChar
     let parseExponent = string' "e" |*> -- rewrite so exponent can have sign too, put sign into exponentpart, also move whole thing sign out of signpart into ingegerpartd
                         option "" (T.singleton <$> oneOf [plus, minus]) |*>
@@ -121,7 +132,7 @@ renderFloatString (FloatString integerText maybeFractionalText maybeExponentText
         safeTail = T.drop 1
 
 parseFloat :: Parser ElVal
-parseFloat = ElFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
+parseFloat = lexeme . label "float" $ ElFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
     where
         readFloat = \case -- multiway if wouldnt make it shorter
             x   | x == nan -> nanVal
@@ -135,7 +146,74 @@ parseFloat = ElFloat . readFloat . T.unpack . renderFloatString <$> parseFloatSt
         plusInfVal = 1/0
         minusInfVal = negate plusInfVal
 
+type Radix = Int
 
+maxRadix :: Radix
+maxRadix = 36
+
+minRadix :: Radix
+minRadix = 2
+
+letterRadices :: [String]
+letterRadices = ["b", "o", "x"]
+
+integerRadices :: [String]
+integerRadices = (<>"r") . show <$> enumFromTo minRadix maxRadix
+
+validRadices :: [String]
+validRadices = letterRadices <> integerRadices
+
+allRadixDigits :: [Char]
+allRadixDigits = enumFromTo '0' '9' <> enumFromTo 'a' 'z'
+
+radixDigitToInt :: Char -> Int
+radixDigitToInt = undefined
+    where
+        digitTable = M.fromList $ zip allRadixDigits [0..maxRadix]
+        
+readRadix :: String -> Maybe Radix
+readRadix r = radixTable ^.at (normalizeCaseS r)
+            where -- b -> 2, o -> 8, x -> 16
+                radixTable = M.fromList $ zip letterRadices [2,8,16] <> zip integerRadices [2..36]
+
+parseRadix :: Parser Radix
+parseRadix = join $ mfromMaybe . readRadix . T.unpack <$>
+                (char '#' *>
+                    choice (string' . T.pack <$> validRadices))
+-- note that the choice here picks first in order sequentially
+-- so, if the elisp grammar didnt require the "r" at the end,
+-- we would have to reorder integerRadices so 20-29 comes before 2
+-- 30-36 before 3, etc. thankfully, the r at the end removes
+-- any ambiguous parses, making my life easier
+
+readIntAnyRadix :: Radix -> String -> Int
+readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeCase $ c) * (r ^ (l - (i+1))) + acc) 0 xs
+    where
+        l = length xs
 
 parseInt :: Parser ElVal -- TODO: this is temp test, parse radix & sign properly
-parseInt = ElInt . read <$> lexeme (some digitChar) <?> "int"
+parseInt = lexeme . label "integer" $ ElInt <$> do
+    sign <- optional parseSign
+    radix <- parseRadix
+    digitText <- some $ oneOf allRadixDigits
+    pure . (maybe id evalSign sign) $ readIntAnyRadix radix digitText
+
+isIntDigit :: Int -> Bool
+isIntDigit i = (i >= 0 && i <= 9) 
+
+isCharDecDigit :: Char -> Bool
+isCharDecDigit c = (c >= '0' && c <= '9')
+
+isCharNonDecDigit :: Char -> Bool
+isCharNonDecDigit c = (normalizeCase c >= normalizeCase 'a' || normalizeCase c <= normalizeCase 'z')
+
+isCharDigit :: Char -> Bool
+isCharDigit c = isCharDecDigit c || isCharNonDecDigit c
+
+digitToChar :: Int -> Maybe Char
+digitToChar i = mfilter' (isIntDigit i) (chr $ i + (ord '0' - 0))
+
+charToDigit :: Char -> Maybe Radix
+charToDigit c = if isCharDecDigit c then Just ((ord c) - (ord '0' - 0))
+                    else if isCharNonDecDigit c then Just ((ord c) - (ord (normalizeCase 'a')) + 10)
+                    else Nothing

@@ -43,15 +43,15 @@ parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
 --     (|*>) = liftM2 (<>)
 
 parseIdentifier :: Parser ElVal
-parseIdentifier = ElIdentifier . Identifier <$> lexeme (p <?> "identifier")
+parseIdentifier = lexeme . label "identifier" $ ElIdentifier . Identifier <$> p
     where
     p = T.pack <$> many (choice [alphaNumChar, symbolChar]) -- might regret this if symbolchar conflicts with # reader syntax
 
 parseList :: Parser ElVal
-parseList = ElList <$> lexeme (parens (many expr) <?> "list")
+parseList = lexeme . label "list" $ ElList <$> parens (many expr)
 
 parseQuote :: Parser ElVal
-parseQuote = ElList <$> lexeme ((char '\'' *> parens (many expr)) <?> "quote")
+parseQuote = lexeme . label "quote" $ ElList <$> (char '\'' *> parens (many expr))
 
 
 -- parseFloat :: Parser ElVal
@@ -61,12 +61,12 @@ parseQuote = ElList <$> lexeme ((char '\'' *> parens (many expr)) <?> "quote")
 --         getFloatString = some digitChar *> 
 
 parseString :: Parser ElVal
-parseString = ElString <$> lexeme (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"' <?> "string")
+parseString = lexeme . label "string" $ ElString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
 
 expr :: Parser ElVal
 expr = try parseQuote
     <|> try parseList
     <|> try parseIdentifier
-    -- <|> try parseInt
-    -- <|> try parseFloat
+    <|> try parseInt
+    <|> try parseFloat
     <|> try parseString

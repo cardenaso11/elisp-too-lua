@@ -6,12 +6,17 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE LambdaCase #-}
 
 module ElispParse.Common
     ( ElVal (..)
     , Parser
     , Identifier (..)
     , (|*>)
+    , mfromMaybe
+    , mfilter'
+    , normalizeCase
+    , normalizeCaseS
     , spaceConsumer
     , lexeme
     , parens ) where
@@ -19,8 +24,11 @@ import GHC.Generics
 import qualified Data.Text as T
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
+import Control.Exception
 import Control.Monad
+import Data.Char
 import Data.Monoid
+import Data.Maybe
 import qualified Data.Functor.Identity
 import Data.Void
 import Data.Proxy
@@ -53,6 +61,20 @@ deriving instance Hashable Identifier
 
 (|*>) :: forall m n . (Monad m, Monoid n) => m n -> m n -> m n
 (|*>) = liftM2 (<>)
+
+
+-- probably want to migrate away from stack eventually so i can just pull in monadplus
+mfromMaybe :: MonadPlus m => Maybe a -> m a
+mfromMaybe = maybe mzero pure
+
+mfilter' :: forall a m. MonadPlus m => Bool -> a -> m a
+mfilter' p x = if p then pure x else mzero
+
+normalizeCase :: Char -> Char
+normalizeCase = toLower
+
+normalizeCaseS :: String -> String -- convention here will be to lowercase
+normalizeCaseS = fmap normalizeCase
 
 specialForms :: [T.Text] -- i doubt the parser is gonna use these but im not compiling this list again lol
 specialForms = ["and", "catch", "cond", "condition-case", "defconst",
