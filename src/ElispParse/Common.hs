@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+-- {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -10,14 +11,16 @@
 
 module ElispParse.Common
     ( ElVal (..)
-    , Parser
+    , HashableVector (..)
     , Identifier (..)
+    , Parser
     , (|*>)
     , mfromMaybe
     , mfilter'
     , normalizeCase
     , normalizeCaseS
     , spaceConsumer
+    , symbol
     , lexeme
     , parens ) where
 import GHC.Generics
@@ -29,6 +32,8 @@ import Control.Monad
 import Data.Char
 import Data.Monoid
 import Data.Maybe
+import qualified Data.Vector as V
+import qualified Data.ByteString as BS
 import qualified Data.Functor.Identity
 import Data.Void
 import Data.Proxy
@@ -40,19 +45,42 @@ type Parser = Parsec Void T.Text
 
 data ElVal = ElList [ElVal] -- TODO: add character tables
             | ElBackquote [ElVal]    
-            | ElVector [ElVal]
+            | ElVector (HashableVector ElVal) -- basically
             | ElTable (HM.HashMap ElVal ElVal)
             | ElImproperList [ElVal] ElVal
             | ElIdentifier Identifier
             | ElFloat Double -- praying emacs people didnt do anything weird
             | ElInt Int
             | ElString T.Text
-    deriving (Show, Generic)
+            | ElByteCode BS.ByteString  
+    deriving Generic                    
+                                        
+-- TODO: existing bytecode is going to be hard. we can syntactically transpile
+-- normal functions but any existing bytecode is going to be opaque.
+-- we can either try to transpile it to lua as well,
+-- or make our own jit for it with llvm-hs. making our own jit for it
+-- seems superficially simple, but synchronizing state between them might
+-- be difficult. on the other hand, transpiling to lua is going to probably
+-- be very yucky and im not sure how fast it would be.
+-- maybe try targetting luajit bytecode
+
+deriving instance Show ElVal
 
 -- make unique references
 data ElObjPtr = ElObjPtr { pointerVal :: Int, dereference :: ElVal }
 
 deriving instance Hashable ElVal
+
+-- not sure if this is worth avoiding orphan instances
+newtype HashableVector a = HashableVector (V.Vector a)
+
+instance forall a. Show a => Show (HashableVector a)
+    where
+        show (HashableVector v) = show v
+instance forall a. Hashable a => Hashable (HashableVector a)
+    where
+        hashWithSalt salt (HashableVector v) = hashWithSalt salt (V.toList v)
+
 
 newtype Identifier = Identifier T.Text
     deriving (Show, Generic)

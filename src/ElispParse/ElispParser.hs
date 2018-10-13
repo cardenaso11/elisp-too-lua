@@ -18,6 +18,8 @@ import Control.Monad
 import Control.Monad.ST.Strict
 import Data.STRef.Strict
 import Data.Monoid
+import qualified Data.Vector as V
+import qualified Data.ByteString as BS
 import qualified Data.Functor.Identity
 import Data.Void
 import Data.Proxy
@@ -27,6 +29,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import ElispParse.Common
 import ElispParse.NumberParser
+
+import Debug.Trace
 
 parseProgram :: Parser ElVal
 parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
@@ -45,7 +49,7 @@ parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
 parseIdentifier :: Parser ElVal
 parseIdentifier = lexeme . label "identifier" $ ElIdentifier . Identifier <$> p
     where
-    p = T.pack <$> many (choice [alphaNumChar, symbolChar]) -- might regret this if symbolchar conflicts with # reader syntax
+    p = T.pack <$> some (choice [alphaNumChar, symbolChar]) -- might regret this if symbolchar conflicts with # reader syntax
 
 parseList :: Parser ElVal
 parseList = lexeme . label "list" $ ElList <$> parens (many expr)
@@ -53,20 +57,17 @@ parseList = lexeme . label "list" $ ElList <$> parens (many expr)
 parseQuote :: Parser ElVal
 parseQuote = lexeme . label "quote" $ ElList <$> (char '\'' *> parens (many expr))
 
-
--- parseFloat :: Parser ElVal
--- parseFloat = ElFloat <$> L.float
--- parseFloat = ElFloat . read <$> lexeme getFloatString <?> "float"
---     where
---         getFloatString = some digitChar *> 
+parseVector :: Parser ElVal
+parseVector = lexeme . label "vector" $ ElVector . HashableVector . V.fromList <$> between (symbol "[") (symbol "]") (many expr)
 
 parseString :: Parser ElVal
 parseString = lexeme . label "string" $ ElString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
 
 expr :: Parser ElVal
-expr = try parseQuote
+expr =  try parseQuote
     <|> try parseList
-    <|> try parseIdentifier
-    <|> try parseInt
-    <|> try parseFloat
-    <|> try parseString
+    <|> try parseVector
+    <|> try parseFloat      -- we dont want to accidentally consume the integer part
+    <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
+    <|> try parseIdentifier -- alternative is to put notFollowedBy in parseInt
+    <|> try parseString     -- and also identifier

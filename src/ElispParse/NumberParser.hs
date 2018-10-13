@@ -19,6 +19,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module ElispParse.NumberParser
     ( parseFloat
@@ -74,9 +75,9 @@ minusInf = fromString $ minus : inf :: PString s
 
 parseSign :: Parser Sign
 parseSign = oneOf [plus, minus] >>= \x ->
-    if x == plus then pure Positive
-    else if x == minus then pure Negative
-    else mzero
+    if  | x == plus -> pure Positive
+        | x == minus -> pure Negative
+        | otherwise -> mzero
 
 
 
@@ -155,21 +156,21 @@ minRadix :: Radix
 minRadix = 2
 
 letterRadices :: [String]
-letterRadices = ["b", "o", "x"]
+letterRadices = normalizeCaseS <$> ["b", "o", "x"]
 
 integerRadices :: [String]
-integerRadices = (<>"r") . show <$> enumFromTo minRadix maxRadix
+integerRadices = (<> normalizeCaseS "r") . show <$> enumFromTo minRadix maxRadix
 
 validRadices :: [String]
 validRadices = letterRadices <> integerRadices
 
 allRadixDigits :: [Char]
-allRadixDigits = enumFromTo '0' '9' <> enumFromTo 'a' 'z'
+allRadixDigits = enumFromTo '0' '9' <> enumFromTo (normalizeCase 'a') (normalizeCase 'z')
 
-radixDigitToInt :: Char -> Int
-radixDigitToInt = undefined
-    where
-        digitTable = M.fromList $ zip allRadixDigits [0..maxRadix]
+-- radixDigitToInt :: Char -> Int
+-- radixDigitToInt = _
+--     where
+--         digitTable = M.fromList $ zip allRadixDigits [0..maxRadix]
         
 readRadix :: String -> Maybe Radix
 readRadix r = radixTable ^.at (normalizeCaseS r)
@@ -214,6 +215,7 @@ digitToChar :: Int -> Maybe Char
 digitToChar i = mfilter' (isIntDigit i) (chr $ i + (ord '0' - 0))
 
 charToDigit :: Char -> Maybe Radix
-charToDigit c = if isCharDecDigit c then Just ((ord c) - (ord '0' - 0))
-                    else if isCharNonDecDigit c then Just ((ord c) - (ord (normalizeCase 'a')) + 10)
-                    else Nothing
+charToDigit c =
+    if  | isCharDecDigit c -> Just ((ord c) - (ord '0' - 0))
+        | isCharNonDecDigit c -> Just ((ord c) - (ord (normalizeCase 'a')) + 10)
+        | otherwise -> Nothing
