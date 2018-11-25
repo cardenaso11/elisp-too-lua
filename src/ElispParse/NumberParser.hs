@@ -132,8 +132,8 @@ renderFloatString (FloatString integerText maybeFractionalText maybeExponentText
     where
         safeTail = T.drop 1
 
-parseFloat :: Parser ElVal
-parseFloat = lexeme . label "float" $ ElFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
+parseFloat :: Parser ASTVal
+parseFloat = lexeme . label "float" $ ASTFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
     where
         readFloat = \case -- multiway if wouldnt make it shorter
             x   | x == nan -> nanVal
@@ -187,8 +187,8 @@ readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeC
     where
         l = length xs
 
-parseInt :: Parser ElVal -- TODO: this is temp test, parse radix & sign properly
-parseInt = lexeme . label "integer" $ ElInt <$> do
+parseInt :: Parser ASTVal -- TODO: this is temp test, parse radix & sign properly
+parseInt = lexeme . label "integer" $ ASTInt <$> do
     sign <- optional parseSign
     radix <- parseRadix
     digitText <- some $ oneOf allRadixDigits

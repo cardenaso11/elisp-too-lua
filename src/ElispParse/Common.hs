@@ -10,7 +10,7 @@
 {-# LANGUAGE LambdaCase #-}
 
 module ElispParse.Common
-    ( ElVal (..)
+    ( ASTVal (..)
     , HashableVector (..)
     , Identifier (..)
     , Parser
@@ -46,16 +46,16 @@ type Parser = Parsec Void T.Text
 -- ElVal only contans enough information to effeciently represent and
 -- manipulate an elisp data structure. NOTE: this only represents an AST
 -- therefore we dont put in any STRef s ElObjPtr stuff in here
-data ElVal = ElList [ElVal] -- TODO: add character tables
-            | ElBackquote [ElVal] -- TODO: quasioquoting
-            | ElVector (HashableVector ElVal)
-            | ElTable (HM.HashMap ElVal ElVal)
-            | ElImproperList [ElVal] ElVal
-            | ElIdentifier Identifier
-            | ElFloat Double -- praying emacs people didnt do anything weird
-            | ElInt Int
-            | ElString T.Text
-            | ElByteCode BS.ByteString  
+data ASTVal = ASTList [ASTVal] -- TODO: add character tables
+            | ASTBackquote [ASTVal] -- TODO: quasioquoting
+            | ASTVector (HashableVector ASTVal)
+            | ASTTable (HM.HashMap ASTVal ASTVal)
+            | ASTImproperList [ASTVal] ASTVal
+            | ASTIdentifier Identifier
+            | ASTFloat Double -- praying emacs people didnt do anything weird
+            | ASTInt Int
+            | ASTString T.Text
+            | ASTByteCode BS.ByteString  
     deriving Generic                    
                                         
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
@@ -67,14 +67,14 @@ data ElVal = ElList [ElVal] -- TODO: add character tables
 -- be very yucky and im not sure how fast it would be.
 -- maybe try targetting luajit bytecode
 
-deriving instance Show ElVal
+deriving instance Show ASTVal
 -- deriving instance Show ElObjPtr
 
 -- -- make unique references
 -- data ElObjPtr = ElObjPtr { pointerVal :: Int, dereference :: ElVal }
     -- deriving Generic
 
-deriving instance Hashable ElVal
+deriving instance Hashable ASTVal
 -- deriving instance Hashable ElObjPtr
 
 -- not sure if this is worth avoiding orphan instances

@@ -31,13 +31,13 @@ import ElispParse.NumberParser
 
 import Debug.Trace
 
-parseProgram :: Parser ElVal
+parseProgram :: Parser ASTVal
 parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
     where
         f (x:[]) = x
-        f xs = ElList xs
+        f xs = ASTList xs
 
--- parseIdentifier :: Parser ElVal
+-- parseIdentifier :: Parser 
 -- parseIdentifier = ElIdentifier . Identifier <$> lexeme (p <?> "identifier")
 --     where
 --     p = T.pack <$>
@@ -45,24 +45,24 @@ parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
 --             |*> many alphaNumChar
 --     (|*>) = liftM2 (<>)
 
-parseIdentifier :: Parser ElVal
-parseIdentifier = lexeme . label "identifier" $ ElIdentifier . Identifier <$> p
+parseIdentifier :: Parser ASTVal
+parseIdentifier = lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
     where
     p = T.pack <$> some (choice [alphaNumChar, symbolChar]) -- might regret this if symbolchar conflicts with # reader syntax
 
-parseList :: Parser ElVal
-parseList = lexeme . label "list" $ ElList <$> parens (many expr)
+parseList :: Parser ASTVal
+parseList = lexeme . label "list" $ ASTList <$> parens (many expr)
 
-parseQuote :: Parser ElVal
-parseQuote = lexeme . label "quote" $ ElList <$> (char '\'' *> parens (many expr))
+parseQuote :: Parser ASTVal
+parseQuote = lexeme . label "quote" $ ASTList <$> (char '\'' *> parens (many expr))
 
-parseVector :: Parser ElVal
-parseVector = lexeme . label "vector" $ ElVector . HashableVector . V.fromList <$> between (symbol "[") (symbol "]") (many expr)
+parseVector :: Parser ASTVal
+parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> between (symbol "[") (symbol "]") (many expr)
 
-parseString :: Parser ElVal
-parseString = lexeme . label "string" $ ElString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
+parseString :: Parser ASTVal
+parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
 
-expr :: Parser ElVal
+expr :: Parser ASTVal
 expr =  try parseQuote
     <|> try parseList
     <|> try parseVector
