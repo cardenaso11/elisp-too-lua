@@ -167,11 +167,6 @@ validRadices = letterRadices <> integerRadices
 allRadixDigits :: [Char]
 allRadixDigits = enumFromTo '0' '9' <> enumFromTo (normalizeCase 'a') (normalizeCase 'z')
 
--- radixDigitToInt :: Char -> Int
--- radixDigitToInt = _
---     where
---         digitTable = M.fromList $ zip allRadixDigits [0..maxRadix]
-        
 readRadix :: String -> Maybe Radix
 readRadix r = radixTable ^.at (normalizeCaseS r)
             where -- b -> 2, o -> 8, x -> 16

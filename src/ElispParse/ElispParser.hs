@@ -6,7 +6,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
--- {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module ElispParse.ElispParser () where
 
