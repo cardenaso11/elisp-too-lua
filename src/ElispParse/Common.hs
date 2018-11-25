@@ -56,7 +56,7 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTInt Int
             | ASTString T.Text
             | ASTByteCode BS.ByteString  
-    deriving Generic                    
+    deriving (Eq, Generic)
                                         
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
@@ -79,6 +79,7 @@ deriving instance Hashable ASTVal
 
 -- not sure if this is worth avoiding orphan instances
 newtype HashableVector a = HashableVector (V.Vector a)
+    deriving Eq
 
 instance forall a. Show a => Show (HashableVector a)
     where
@@ -90,7 +91,7 @@ instance forall a. Hashable a => Hashable (HashableVector a)
 -- ellist = ElObjPtr . ElList
 
 newtype Identifier = Identifier T.Text
-    deriving (Show, Generic)
+    deriving (Eq, Show, Generic)
 
 deriving instance Hashable Identifier
 

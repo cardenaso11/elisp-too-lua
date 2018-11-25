@@ -92,17 +92,17 @@ evalSign = \case
 parseFloatString :: Parser FloatString
 parseFloatString = do
     signText <- optional parseSign
-    integerText <- T.pack <$> some digitChar
+    integerText <- option "0" $ T.pack <$> some digitChar
     let parseExponent = string' "e" |*> -- rewrite so exponent can have sign too, put sign into exponentpart, also move whole thing sign out of signpart into ingegerpartd
                         option "" (T.singleton <$> oneOf [plus, minus]) |*>
                         choice [T.pack <$> some digitChar, string nan, string inf]
         parseFraction requireFraction =
-            (string $ T.singleton dot)
+            (string . T.singleton $ dot)
             |*> ((case requireFraction of DoRequireFraction -> id; DoNotRequireFraction -> option "")
                     (T.pack <$> some digitChar))
         unaryThenBinary = (.) . (.)
     let hasExponent = do
-                fractionalText <- (optional $ parseFraction DoNotRequireFraction)
+                fractionalText <- optional $ parseFraction DoNotRequireFraction
                 exponentText <- parseExponent
                 pure $ FloatString integerText fractionalText (Just exponentText)
         hasFractional = do
@@ -190,7 +190,8 @@ readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeC
 parseInt :: Parser ASTVal -- TODO: this is temp test, parse radix & sign properly
 parseInt = lexeme . label "integer" $ ASTInt <$> do
     sign <- optional parseSign
-    radix <- parseRadix
+    radix <- let defaultRadix = 10 in
+        fromMaybe defaultRadix <$> optional parseRadix
     digitText <- some $ oneOf allRadixDigits
     pure . (maybe id evalSign sign) $ readIntAnyRadix radix digitText
 
