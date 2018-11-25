@@ -23,7 +23,7 @@ parseText :: forall a.
     Parser a
     -> T.Text
     -> Either (ParseError Char Void) a
-parseText p s = parse p "" s
+parseText p = parse p ""
 
 spec = do
     describe "parseInt" $
