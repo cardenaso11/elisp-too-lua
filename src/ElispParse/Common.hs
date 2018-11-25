@@ -43,9 +43,12 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void T.Text
 
+-- ElVal only contans enough information to effeciently represent and
+-- manipulate an elisp data structure. NOTE: this only represents an AST
+-- therefore we dont put in any STRef s ElObjPtr stuff in here
 data ElVal = ElList [ElVal] -- TODO: add character tables
-            | ElBackquote [ElVal]    
-            | ElVector (HashableVector ElVal) -- basically
+            | ElBackquote [ElVal] -- TODO: quasioquoting
+            | ElVector (HashableVector ElVal)
             | ElTable (HM.HashMap ElVal ElVal)
             | ElImproperList [ElVal] ElVal
             | ElIdentifier Identifier
@@ -65,11 +68,14 @@ data ElVal = ElList [ElVal] -- TODO: add character tables
 -- maybe try targetting luajit bytecode
 
 deriving instance Show ElVal
+-- deriving instance Show ElObjPtr
 
--- make unique references
-data ElObjPtr = ElObjPtr { pointerVal :: Int, dereference :: ElVal }
+-- -- make unique references
+-- data ElObjPtr = ElObjPtr { pointerVal :: Int, dereference :: ElVal }
+    -- deriving Generic
 
 deriving instance Hashable ElVal
+-- deriving instance Hashable ElObjPtr
 
 -- not sure if this is worth avoiding orphan instances
 newtype HashableVector a = HashableVector (V.Vector a)
@@ -81,6 +87,7 @@ instance forall a. Hashable a => Hashable (HashableVector a)
     where
         hashWithSalt salt (HashableVector v) = hashWithSalt salt (V.toList v)
 
+-- ellist = ElObjPtr . ElList
 
 newtype Identifier = Identifier T.Text
     deriving (Show, Generic)
