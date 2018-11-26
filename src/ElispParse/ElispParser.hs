@@ -62,9 +62,14 @@ parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList 
 parseString :: Parser ASTVal
 parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
 
+parseCons :: Parser ASTVal
+parseCons = lexeme . label "cons" $
+    parens $ ASTCons <$> some expr <* (lexeme $ string ".") <*> expr
+
 expr :: Parser ASTVal
 expr =  try parseQuote
     <|> try parseList
+    <|> try parseCons
     <|> try parseVector
     <|> try parseFloat      -- we dont want to accidentally consume the integer part
     <|> try parseInt        -- of a float as an integer or identifier, so prioritize.

@@ -52,7 +52,7 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTBackquote [ASTVal] -- TODO: quasioquoting
             | ASTVector (HashableVector ASTVal)
             | ASTTable (HM.HashMap ASTVal ASTVal)
-            | ASTImproperList [ASTVal] ASTVal
+            | ASTCons [ASTVal] ASTVal
             | ASTIdentifier Identifier
             | ASTFloat Double -- praying emacs people didnt do anything weird
             | ASTInt Int
@@ -96,6 +96,8 @@ newtype Identifier = Identifier T.Text
     deriving (Eq, Show, Generic)
 
 deriving instance Hashable Identifier
+
+
 
 (|*>) :: forall m n . (Monad m, Monoid n) => m n -> m n -> m n
 (|*>) = liftM2 (<>)
