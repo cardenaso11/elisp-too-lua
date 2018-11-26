@@ -187,12 +187,13 @@ readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeC
     where
         l = length xs
 
-parseInt :: Parser ASTVal -- TODO: this is temp test, parse radix & sign properly
+parseInt :: Parser ASTVal -- TODO: add a test to make sure we dont accidentally parse identifiers as ints
 parseInt = lexeme . label "integer" $ ASTInt <$> do
     sign <- optional parseSign
     radix <- let defaultRadix = 10 in
         fromMaybe defaultRadix <$> optional parseRadix
-    digitText <- some $ oneOf allRadixDigits
+    digitText <- let allowedDigits = take radix allRadixDigits in
+        some $ oneOf allowedDigits
     pure . (maybe id evalSign sign) $ readIntAnyRadix radix digitText
 
 isIntDigit :: Int -> Bool

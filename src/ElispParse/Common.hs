@@ -51,13 +51,13 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTQuote [ASTVal]
             | ASTBackquote [ASTVal] -- TODO: quasioquoting
             | ASTVector (HashableVector ASTVal)
-            | ASTTable (HM.HashMap ASTVal ASTVal)
+            | ASTTable [ASTVal]
             | ASTCons [ASTVal] ASTVal
             | ASTIdentifier Identifier
             | ASTFloat Double -- praying emacs people didnt do anything weird
             | ASTInt Int
             | ASTString T.Text
-            | ASTByteCode BS.ByteString  
+            | ASTByteCode [ASTVal] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
                                         
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile

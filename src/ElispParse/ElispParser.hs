@@ -48,7 +48,11 @@ parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
 parseIdentifier :: Parser ASTVal
 parseIdentifier = lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
     where
-    p = T.pack <$> some (choice [alphaNumChar, symbolChar]) -- might regret this if symbolchar conflicts with # reader syntax
+    p = T.pack <$> some (choice [
+        alphaNumChar,
+        symbolChar,
+        mfilter (not . flip elem ['"', '\'', ',', '`', '(', ')', '[', ']']) punctuationChar])
+        -- what exactly is legal as an elisp identifier is ambigious at best and unspecified at worst
 
 parseList :: Parser ASTVal
 parseList = lexeme . label "list" $ ASTList <$> parens (many expr)
@@ -64,13 +68,18 @@ parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> m
 
 parseCons :: Parser ASTVal
 parseCons = lexeme . label "cons" $
-    parens $ ASTCons <$> some expr <* (lexeme $ string ".") <*> expr
+    parens $ ASTCons <$> some expr <* (lexeme $ char '.') <*> expr
+
+parseTable :: Parser ASTVal
+parseTable = lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some expr))
+
 
 expr :: Parser ASTVal
 expr =  try parseQuote
     <|> try parseList
     <|> try parseCons
     <|> try parseVector
+    <|> try parseTable
     <|> try parseFloat      -- we dont want to accidentally consume the integer part
     <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
     <|> try parseIdentifier -- alternative is to put notFollowedBy in parseInt
