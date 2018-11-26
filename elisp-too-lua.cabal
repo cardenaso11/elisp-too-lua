@@ -1,0 +1,84 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 00af75dc51ff7bd2b5c8ffcaa50889eacee9bfa8eb26e34f0e6cc6add5f84e3d
+
+name:           elisp-too-lua
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/elisp-too-lua#readme>
+homepage:       https://github.com/githubuser/elisp-too-lua#readme
+bug-reports:    https://github.com/githubuser/elisp-too-lua/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2018 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/elisp-too-lua
+
+    -- , hashable
+library
+  exposed-modules:
+      ElispParse.Common
+      ElispParse.ElispParser
+      ElispParse.NumberParser
+      Lib
+      LuaGen.Types.Function
+--   other-modules:
+    --   Paths_elisp_too_lua
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , containers
+    , composition
+    , vector
+    , hedgehog
+    , hashable
+    , lens
+    , megaparsec
+    , text
+    , unordered-containers
+  default-language: Haskell2010
+
+executable elisp-too-lua-exe
+  main-is: Main.hs
+--   other-modules:
+--       Paths_elisp_too_lua
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , elisp-too-lua
+  default-language: Haskell2010
+
+test-suite elisp-too-lua-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  exposed-modules:
+    -- ElispParse.CommonSpec
+    ElispParse.ElispParserSpec
+    ElispParse.NumberParserSpec
+  other-modules:
+      Paths_elisp_too_lua
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , elisp-too-lua
+    , hspec
+    , megaparsec
+    , hspec-megaparsec
+    , text
+  default-language: Haskell2010
