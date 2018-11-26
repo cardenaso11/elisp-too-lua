@@ -15,6 +15,7 @@ module ElispParse.Common
     , Identifier (..)
     , Parser
     , (|*>)
+    , parseText
     , mfromMaybe
     , mfilter'
     , normalizeCase
@@ -47,6 +48,7 @@ type Parser = Parsec Void T.Text
 -- manipulate an elisp data structure. NOTE: this only represents an AST
 -- therefore we dont put in any STRef s ElObjPtr stuff in here
 data ASTVal = ASTList [ASTVal] -- TODO: add character tables
+            | ASTQuote [ASTVal]
             | ASTBackquote [ASTVal] -- TODO: quasioquoting
             | ASTVector (HashableVector ASTVal)
             | ASTTable (HM.HashMap ASTVal ASTVal)
@@ -98,6 +100,11 @@ deriving instance Hashable Identifier
 (|*>) :: forall m n . (Monad m, Monoid n) => m n -> m n -> m n
 (|*>) = liftM2 (<>)
 
+parseText :: forall a.
+    Parser a
+    -> T.Text
+    -> Either (ParseError Char Void) a
+parseText p = parse p ""
 
 -- probably want to migrate away from stack eventually so i can just pull in monadplus
 mfromMaybe :: MonadPlus m => Maybe a -> m a

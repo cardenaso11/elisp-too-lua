@@ -7,7 +7,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
-module ElispParse.ElispParser () where
+module ElispParse.ElispParser (parseProgram) where
 
 import GHC.Generics
 import qualified Data.Text as T
@@ -54,7 +54,7 @@ parseList :: Parser ASTVal
 parseList = lexeme . label "list" $ ASTList <$> parens (many expr)
 
 parseQuote :: Parser ASTVal
-parseQuote = lexeme . label "quote" $ ASTList <$> (char '\'' *> parens (many expr))
+parseQuote = lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens (many expr))
 
 parseVector :: Parser ASTVal
 parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> between (symbol "[") (symbol "]") (many expr)

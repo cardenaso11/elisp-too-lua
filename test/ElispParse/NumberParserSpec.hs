@@ -1,10 +1,5 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module ElispParse.NumberParserSpec (spec) where
@@ -18,12 +13,6 @@ import qualified Data.Text as T
 
 import ElispParse.Common
 import ElispParse.NumberParser
-
-parseText :: forall a.
-    Parser a
-    -> T.Text
-    -> Either (ParseError Char Void) a
-parseText p = parse p ""
 
 spec = do
     describe "parseInt" $
@@ -48,6 +37,7 @@ spec = do
             let runParseFloat = parseText parseFloat
 
             runParseFloat "1.2" `shouldParse` ASTFloat 1.2
+            runParseFloat ".2" `shouldParse` ASTFloat 0.2
 
             let fifteenHundred = ASTFloat 1500.0
             runParseFloat "1500.0" `shouldParse` fifteenHundred
