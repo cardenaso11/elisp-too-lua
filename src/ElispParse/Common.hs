@@ -13,6 +13,7 @@ module ElispParse.Common
     ( ASTVal (..)
     , HashableVector (..)
     , Identifier (..)
+    , BackquoteElement (..)
     , Parser
     , (|*>)
     , parseText
@@ -49,7 +50,7 @@ type Parser = Parsec Void T.Text
 -- therefore we dont put in any STRef s ElObjPtr stuff in here
 data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTQuote [ASTVal]
-            | ASTBackquote [ASTVal] -- TODO: quasioquoting
+            | ASTBackquote [BackquoteElement ASTVal] -- TODO: quasioquoting
             | ASTVector (HashableVector ASTVal)
             | ASTTable [ASTVal]
             | ASTCons [ASTVal] ASTVal
@@ -59,7 +60,12 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTString T.Text
             | ASTByteCode [ASTVal] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
-                                        
+
+data BackquoteElement a = Quoted a
+                        | Unquoted a
+                        | Spliced a
+    deriving (Eq, Generic, Show, Hashable)
+
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
 -- we can either try to transpile it to lua as well,

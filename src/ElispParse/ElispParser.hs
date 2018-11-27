@@ -60,6 +60,16 @@ parseList = lexeme . label "list" $ ASTList <$> parens (many expr)
 parseQuote :: Parser ASTVal
 parseQuote = lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens (many expr))
 
+parseBackquote :: Parser ASTVal
+parseBackquote = lexeme . label "backquote" $ ASTBackquote <$> (char '`' *> parens (many parseBackquoteElement))
+    where
+        parseBackquoteElement =  try parseUnquoted
+                            <|> try parseSpliced
+                            <|> try parseQuoted
+        parseUnquoted = Unquoted <$> (char ',' *> expr)
+        parseSpliced = Spliced <$> (string ",@" *> expr)
+        parseQuoted = Quoted <$> expr 
+
 parseVector :: Parser ASTVal
 parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> between (symbol "[") (symbol "]") (many expr)
 
@@ -76,6 +86,7 @@ parseTable = lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some 
 
 expr :: Parser ASTVal
 expr =  try parseQuote
+    <|> try parseBackquote
     <|> try parseList
     <|> try parseCons
     <|> try parseVector
