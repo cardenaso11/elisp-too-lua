@@ -77,7 +77,7 @@ parseChar :: Parser ASTVal
 parseChar = lexeme . label "character" $ ASTChar <$> (char '?' *> L.charLiteral)
 
 parseString :: Parser ASTVal
-parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
+parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> manyTill L.charLiteral (char '"'))) 
 
 parseCons :: Parser ASTVal
 parseCons = lexeme . label "cons" $
