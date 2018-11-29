@@ -51,7 +51,7 @@ parseIdentifier = lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
     p = T.pack <$> some (choice [
         alphaNumChar,
         symbolChar,
-        mfilter (not . flip elem ['"', '\'', ',', '`', '(', ')', '[', ']']) punctuationChar])
+        try $ mfilter (not . flip elem ['"', '\'', ',', '`', '(', ')', '[', ']']) punctuationChar])
         -- what exactly is legal as an elisp identifier is ambigious at best and unspecified at worst
 
 parseList :: Parser ASTVal

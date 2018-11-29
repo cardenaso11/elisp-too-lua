@@ -27,6 +27,9 @@ spec = do
                 shouldParse (runParseProgram
                     "'(1 2 3)")
                     (ASTQuote oneTwoThree)
+                shouldParse (runParseProgram
+                    "'(a b c)")
+                    (ASTQuote $ ASTIdentifier . Identifier <$> ["a","b","c"])
             it "parses nested quoted expressions" $ do
                 shouldParse (runParseProgram
                     "'( '(1 2 3) '(1 2 3) '(1 2 3))")
