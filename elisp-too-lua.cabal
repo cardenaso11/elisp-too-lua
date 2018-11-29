@@ -81,4 +81,5 @@ test-suite elisp-too-lua-test
     , megaparsec
     , hspec-megaparsec
     , text
+    , vector
   default-language: Haskell2010
