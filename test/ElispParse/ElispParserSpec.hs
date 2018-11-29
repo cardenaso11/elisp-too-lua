@@ -55,6 +55,15 @@ spec = do
                          , Quoted (ASTInt 3)
                          ])
 
+            it "parses backquoted expressions containing identifiers" $ do
+                shouldParse (runParseProgram
+                    "`(1 ,2 abc)")
+                    (ASTBackquote
+                         [ Quoted (ASTInt 1)
+                         , Unquoted (ASTInt 2)
+                         , Quoted (ASTIdentifier (Identifier "abc"))
+                         ])
+
         let emptyVector = ASTVector (HashableVector V.empty)
             zeroOneTwo = ASTVector (HashableVector (V.generate 3 ASTInt)) in do
             it "parses the empty vector" $ do
