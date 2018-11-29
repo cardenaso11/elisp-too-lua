@@ -90,3 +90,40 @@ spec = do
                 shouldParse (runParseProgram
                     "garfield")
                     (ASTIdentifier (Identifier "garfield"))
+
+        let a = ASTChar 'a'
+            b = ASTChar 'b'
+            c = ASTChar 'c'
+            newlnC = ASTChar '\n'
+            tabC = ASTChar '\t' in do
+            it "parses character literals" $ do
+                shouldParse (runParseProgram
+                    "?a")
+                    a
+                shouldParse (runParseProgram
+                    "?b")
+                    b
+                shouldParse (runParseProgram
+                    "?c")
+                    c
+                
+            it "parses escaped character literals" $ do
+                shouldParse (runParseProgram
+                    "?\\n")
+                    newlnC
+                shouldParse (runParseProgram
+                    "?\\t")
+                    tabC
+        
+        let d = ASTChar 'd'
+            one = ASTInt 1
+            two = ASTInt 2 in do
+            it "parses individual cons cells" $ do
+                shouldParse (runParseProgram
+                    "(1 . 2)")
+                    (ASTCons [one] two)
+
+            it "parses improper lists as cons cells" $ do
+                shouldParse (runParseProgram
+                    "(1 d . 2")
+                    (ASTCons [one, d] two)
