@@ -115,7 +115,7 @@ spec = do
                     "?\\t")
                     tabC
         
-        let d = ASTChar 'd'
+        let d = ASTIdentifier $ Identifier "d"
             one = ASTInt 1
             two = ASTInt 2 in do
             it "parses individual cons cells" $ do
@@ -125,5 +125,5 @@ spec = do
 
             it "parses improper lists as cons cells" $ do
                 shouldParse (runParseProgram
-                    "(1 d . 2")
+                    "(1 d . 2)")
                     (ASTCons [one, d] two)

@@ -81,7 +81,7 @@ parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> m
 
 parseCons :: Parser ASTVal
 parseCons = lexeme . label "cons" $
-    parens $ ASTCons <$> some expr <* (lexeme $ char '.') <*> expr
+    parens (ASTCons <$> (lexeme $ someTill expr (char '.')) <*> expr)
 
 parseTable :: Parser ASTVal
 parseTable = lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some expr))
@@ -93,10 +93,10 @@ parseCharSubTable :: Parser ASTVal
 parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr)) 
 
 expr :: Parser ASTVal
-expr =  try parseQuote
+expr =  try parseCons
+    <|> try parseQuote
     <|> try parseBackquote
     <|> try parseList
-    <|> try parseCons
     <|> try parseVector
     <|> try parseTable
     <|> try parseCharTable
