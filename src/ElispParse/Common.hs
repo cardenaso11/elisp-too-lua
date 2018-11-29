@@ -60,6 +60,7 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTCharSubTable [ASTVal]
             | ASTFloat Double -- praying emacs people didnt do anything weird
             | ASTInt Int
+            | ASTChar Char
             | ASTString T.Text
             | ASTByteCode [ASTVal] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
