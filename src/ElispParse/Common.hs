@@ -24,7 +24,8 @@ module ElispParse.Common
     , spaceConsumer
     , symbol
     , lexeme
-    , parens ) where
+    , parens
+    , brackets ) where
 import GHC.Generics
 import qualified Data.Text as T
 import Data.Hashable
@@ -55,6 +56,8 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTTable [ASTVal]
             | ASTCons [ASTVal] ASTVal
             | ASTIdentifier Identifier
+            | ASTCharTable [ASTVal]
+            | ASTCharSubTable [ASTVal]
             | ASTFloat Double -- praying emacs people didnt do anything weird
             | ASTInt Int
             | ASTString T.Text
@@ -148,3 +151,6 @@ symbol = L.symbol spaceConsumer
 
 parens :: forall a. Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
+
+brackets :: forall a. Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")

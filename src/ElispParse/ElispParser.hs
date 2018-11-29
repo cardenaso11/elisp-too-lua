@@ -71,7 +71,7 @@ parseBackquote = lexeme . label "backquote" $ ASTBackquote <$> (char '`' *> pare
         parseQuoted = Quoted <$> expr 
 
 parseVector :: Parser ASTVal
-parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> between (symbol "[") (symbol "]") (many expr)
+parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> brackets (many expr)
 
 parseString :: Parser ASTVal
 parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> many (noneOf ['"'])) <* char '"')
@@ -83,6 +83,11 @@ parseCons = lexeme . label "cons" $
 parseTable :: Parser ASTVal
 parseTable = lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some expr))
 
+parseCharTable :: Parser ASTVal
+parseCharTable = lexeme . label "charTable" $ ASTCharTable <$> (string "#^" *> brackets (many expr))
+
+parseCharSubTable :: Parser ASTVal
+parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr)) 
 
 expr :: Parser ASTVal
 expr =  try parseQuote
@@ -91,6 +96,8 @@ expr =  try parseQuote
     <|> try parseCons
     <|> try parseVector
     <|> try parseTable
+    <|> try parseCharTable
+    <|> try parseCharSubTable
     <|> try parseFloat      -- we dont want to accidentally consume the integer part
     <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
     <|> try parseIdentifier -- alternative is to put notFollowedBy in parseInt
