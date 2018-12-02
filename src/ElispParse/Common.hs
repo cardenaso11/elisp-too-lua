@@ -62,6 +62,7 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTInt Int
             | ASTChar Char
             | ASTString T.Text
+            | ASTBoolVector T.Text
             | ASTByteCode [ASTVal] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
 

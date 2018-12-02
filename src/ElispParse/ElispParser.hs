@@ -6,6 +6,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE LambdaCase #-}
 
 module ElispParse.ElispParser (parseProgram) where
 
@@ -24,6 +25,7 @@ import Data.Void
 import Data.Proxy
 import Text.Megaparsec as M
 import Text.Megaparsec.Char
+import Control.Lens
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import ElispParse.Common
@@ -92,6 +94,10 @@ parseCharTable = lexeme . label "charTable" $ ASTCharTable <$> (string "#^" *> b
 parseCharSubTable :: Parser ASTVal
 parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr)) 
 
+parseByteVector :: Parser ASTVal
+parseByteVector = lexeme . label "boolVector" $ ASTBoolVector <$> (string "#&"
+    *> (parseString <&> \case (ASTString x) -> x))
+
 expr :: Parser ASTVal
 expr =  try parseCons
     <|> try parseQuote
@@ -101,6 +107,7 @@ expr =  try parseCons
     <|> try parseTable
     <|> try parseCharTable
     <|> try parseCharSubTable
+    <|> try parseByteVector
     <|> try parseFloat      -- we dont want to accidentally consume the integer part
     <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
     <|> try parseChar       -- alternative is to put notFollowedBy in parseInt
