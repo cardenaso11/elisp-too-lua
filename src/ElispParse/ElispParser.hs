@@ -70,7 +70,7 @@ parseBackquote = lexeme . label "backquote" $ ASTBackquote <$> (char '`' *> pare
                             <|> try parseQuoted
         parseUnquoted = Unquoted <$> (char ',' *> expr)
         parseSpliced = Spliced <$> (string ",@" *> expr)
-        parseQuoted = Quoted <$> expr 
+        parseQuoted = Quoted <$> expr
 
 parseVector :: Parser ASTVal
 parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> brackets (many expr)
@@ -79,7 +79,7 @@ parseChar :: Parser ASTVal
 parseChar = lexeme . label "character" $ ASTChar <$> (char '?' *> L.charLiteral)
 
 parseString :: Parser ASTVal
-parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> manyTill L.charLiteral (char '"'))) 
+parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> manyTill L.charLiteral (char '"')))
 
 parseCons :: Parser ASTVal
 parseCons = lexeme . label "cons" $
@@ -92,10 +92,10 @@ parseCharTable :: Parser ASTVal
 parseCharTable = lexeme . label "charTable" $ ASTCharTable <$> (string "#^" *> brackets (many expr))
 
 parseCharSubTable :: Parser ASTVal
-parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr)) 
+parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr))
 
-parseByteVector :: Parser ASTVal
-parseByteVector = lexeme . label "boolVector" $ ASTBoolVector <$> (string "#&"
+parseBoolVector :: Parser ASTVal
+parseBoolVector = lexeme . label "boolVector" $ ASTBoolVector <$> (string "#&"
     *> (parseString <&> \case (ASTString x) -> x))
 
 expr :: Parser ASTVal
@@ -107,7 +107,7 @@ expr =  try parseCons
     <|> try parseTable
     <|> try parseCharTable
     <|> try parseCharSubTable
-    <|> try parseByteVector
+    <|> try parseBoolVector
     <|> try parseFloat      -- we dont want to accidentally consume the integer part
     <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
     <|> try parseChar       -- alternative is to put notFollowedBy in parseInt
