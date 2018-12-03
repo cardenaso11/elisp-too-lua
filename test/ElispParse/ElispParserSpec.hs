@@ -194,4 +194,7 @@ spec = do
                 [r|#&4"hewwo"|])
                 (ASTBoolVector 4 "hewwo")
                 
-                
+        it "parses bytecode" $ do
+            shouldParse (runParseProgram
+                "#[1 2 3 4]")
+                (ASTByteCode $ ASTInt <$> [1, 2, 3, 4])

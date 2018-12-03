@@ -98,6 +98,10 @@ parseBoolVector :: Parser ASTVal
 parseBoolVector = lexeme . label "boolVector" $ string "#&" *>
     (ASTBoolVector <$> L.decimal <*> (parseString <&> \case (ASTString x) -> x))
 
+parseByteCode :: Parser ASTVal
+parseByteCode = lexeme . label "byteCode" $ char '#' *>
+    (ASTByteCode <$> brackets (many expr))
+
 expr :: Parser ASTVal
 expr =  try parseCons
     <|> try parseQuote
@@ -107,6 +111,7 @@ expr =  try parseCons
     <|> try parseTable
     <|> try parseCharTable
     <|> try parseCharSubTable
+    <|> try parseByteCode
     <|> try parseBoolVector
     <|> try parseFloat      -- we dont want to accidentally consume the integer part
     <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
