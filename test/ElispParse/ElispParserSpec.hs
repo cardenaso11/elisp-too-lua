@@ -187,4 +187,11 @@ spec = do
             it "parses character subtables" $ do
                 shouldParse (runParseProgram
                     "#^^[d 2 1]")
-                    (ASTCharTable  [d, two, one])
+                    (ASTCharTable  [d, two, one])        
+
+        it "parses boolvector" $ do
+            shouldParse (runParseProgram
+                [r|#&4"hewwo"|])
+                (ASTBoolVector 4 "hewwo")
+                
+                
