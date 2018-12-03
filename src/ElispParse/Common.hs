@@ -33,6 +33,7 @@ import qualified Data.HashMap.Strict as HM
 import Control.Exception
 import Control.Monad
 import Data.Char
+import Data.String
 import Data.Monoid
 import Data.Maybe
 import qualified Data.Vector as V
@@ -70,6 +71,9 @@ data BackquoteElement a = Quoted a
                         | Unquoted a
                         | Spliced a
     deriving (Eq, Generic, Show, Hashable)
+
+instance (IsString ASTVal) where
+    fromString = ASTString . T.pack
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
