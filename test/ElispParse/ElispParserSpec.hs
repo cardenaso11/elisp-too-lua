@@ -179,12 +179,12 @@ spec = do
                     "(1 d . 2)")
                     (ASTCons [one, d] two)
             
-            it "parses characer tables" $ do
+            it "parses character tables" $ do
                 shouldParse (runParseProgram
-                    "#^(1 2 d)")
+                    "#^[1 2 d]")
                     (ASTCharTable [one, two, d])
 
             it "parses character subtables" $ do
                 shouldParse (runParseProgram
-                    "#^^(d 2 1)")
+                    "#^^[d 2 1]")
                     (ASTCharTable  [d, two, one])
