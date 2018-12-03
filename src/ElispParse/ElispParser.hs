@@ -95,8 +95,8 @@ parseCharSubTable :: Parser ASTVal
 parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr))
 
 parseBoolVector :: Parser ASTVal
-parseBoolVector = lexeme . label "boolVector" $ ASTBoolVector <$> (string "#&"
-    *> (parseString <&> \case (ASTString x) -> x))
+parseBoolVector = lexeme . label "boolVector" $ string "#&" *>
+    (ASTBoolVector <$> L.decimal <*> (parseString <&> \case (ASTString x) -> x))
 
 expr :: Parser ASTVal
 expr =  try parseCons
