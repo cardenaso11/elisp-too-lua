@@ -3,11 +3,14 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module ElispParse.Common
     ( ASTVal (..)
@@ -15,6 +18,7 @@ module ElispParse.Common
     , Identifier (..)
     , BackquoteElement (..)
     , Parser
+    , RecursiveParser
     , (|*>)
     , parseText
     , mfromMaybe
@@ -31,7 +35,9 @@ import qualified Data.Text as T
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
 import Control.Exception
+import Control.Applicative
 import Control.Monad
+import Control.Monad.Reader
 import Data.Char
 import Data.String
 import Data.Monoid
@@ -45,7 +51,17 @@ import Text.Megaparsec as M
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
+--NOTE: not using classy mtl here on purpose: not worth effort
+-- ^Parser is the type of a recursive parser
 type Parser = Parsec Void T.Text
+-- |RecursiveParser is the type of a recursive parser
+newtype RecursiveParser a = RecursiveParser (ReaderT (Parser ASTVal) Parser a)
+deriving newtype instance Functor RecursiveParser
+deriving newtype instance Applicative RecursiveParser
+deriving newtype instance Alternative RecursiveParser
+deriving newtype instance Monad RecursiveParser
+deriving newtype instance MonadPlus RecursiveParser
+deriving newtype instance MonadParsec Void T.Text RecursiveParser
 
 -- ElVal only contans enough information to effeciently represent and
 -- manipulate an elisp data structure. NOTE: this only represents an AST
@@ -110,7 +126,7 @@ instance forall a. Hashable a => Hashable (HashableVector a)
 newtype Identifier = Identifier T.Text
     deriving (Eq, Show, Generic)
 
-deriving instance Hashable Identifier
+deriving anyclass instance Hashable Identifier
 
 
 
