@@ -10,15 +10,19 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module ElispParse.Common
     ( ASTVal (..)
     , HashableVector (..)
     , Identifier (..)
-    , BackquoteElement (..)
+    , BackquotedAST (..)
     , Parser
-    , RecursiveParser
+    , RecursiveParser (..)
+    , liftRP
+    , runRP
+    , mapAST
     , (|*>)
     , parseText
     , mfromMaybe
@@ -61,6 +65,7 @@ deriving newtype instance Applicative RecursiveParser
 deriving newtype instance Alternative RecursiveParser
 deriving newtype instance Monad RecursiveParser
 deriving newtype instance MonadPlus RecursiveParser
+deriving newtype instance MonadReader (Parser ASTVal) RecursiveParser
 deriving newtype instance MonadParsec Void T.Text RecursiveParser
 
 -- ElVal only contans enough information to effeciently represent and
@@ -68,7 +73,7 @@ deriving newtype instance MonadParsec Void T.Text RecursiveParser
 -- therefore we dont put in any STRef s ElObjPtr stuff in here
 data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTQuote [ASTVal]
-            | ASTBackquote [BackquoteElement ASTVal] -- TODO: quasioquoting
+            | ASTBackquote [BackquotedAST] -- TODO: quasioquoting
             | ASTVector (HashableVector ASTVal)
             | ASTTable [ASTVal]
             | ASTCons [ASTVal] ASTVal
@@ -83,10 +88,16 @@ data ASTVal = ASTList [ASTVal] -- TODO: add character tables
             | ASTByteCode [ASTVal] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
 
-data BackquoteElement a = Quoted a
-                        | Unquoted a
-                        | Spliced a
+data BackquotedAST = Quoted ASTVal
+                        | Unquoted ASTVal
+                        | Spliced ASTVal
     deriving (Eq, Generic, Show, Hashable)
+
+mapAST :: (ASTVal -> b) -> BackquotedAST -> b
+mapAST f = \case
+  Quoted a -> f a
+  Unquoted a -> f a
+  Spliced a -> f a
 
 instance (IsString ASTVal) where
     fromString = ASTString . T.pack
@@ -129,6 +140,11 @@ newtype Identifier = Identifier T.Text
 deriving anyclass instance Hashable Identifier
 
 
+liftRP :: Parser a -> RecursiveParser a
+liftRP = RecursiveParser . lift
+
+runRP :: Parser ASTVal -> RecursiveParser a -> Parser a
+runRP exp (RecursiveParser parser) = runReaderT parser exp
 
 (|*>) :: forall m n . (Monad m, Monoid n) => m n -> m n -> m n
 (|*>) = liftM2 (<>)
@@ -159,20 +175,33 @@ specialForms = ["and", "catch", "cond", "condition-case", "defconst",
     "save-excursion", "save-restriction", "setq", "setq-default",
     "track-mouse", "unwind-protect", "while"]
 
-spaceConsumer :: Parser ()
+spaceConsumer :: (MonadParsec e s m, Token s ~ Char, Tokens s ~ T.Text) => m ()
 spaceConsumer = L.space space1 lineComment blockComment
     where
-    lineComment = L.skipLineComment ";"
+    lineComment = L.skipLineComment (";" :: T.Text)
     blockComment = empty
 
-lexeme :: forall a. Parser a -> Parser a
+lexeme :: MonadParsec e s m
+  => Token s ~ Char
+  => Tokens s ~ T.Text
+  => m a -> m a
 lexeme = L.lexeme spaceConsumer
 
-symbol :: T.Text -> Parser T.Text
+symbol :: MonadParsec e s m
+  => Token s ~ Char
+  => Tokens s ~ T.Text
+  => T.Text
+  -> m T.Text
 symbol = L.symbol spaceConsumer
 
-parens :: forall a. Parser a -> Parser a
+parens :: MonadParsec e s m
+  => Token s ~ Char
+  => Tokens s ~ T.Text
+  => m a -> m a
 parens = between (symbol "(") (symbol ")")
 
-brackets :: forall a. Parser a -> Parser a
+brackets :: MonadParsec e s m
+  => Token s ~ Char
+  => Tokens s ~ T.Text
+  => m a -> m a
 brackets = between (symbol "[") (symbol "]")

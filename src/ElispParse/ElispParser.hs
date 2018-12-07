@@ -15,6 +15,7 @@ import qualified Data.Text as T
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
 import Control.Monad
+import Control.Monad.Reader
 import Control.Monad.ST.Strict
 import Data.STRef.Strict
 import Data.Monoid
@@ -22,6 +23,7 @@ import qualified Data.Vector as V
 import qualified Data.ByteString as BS
 import qualified Data.Functor.Identity
 import Data.Void
+import Data.Fixed
 import Data.Proxy
 import Text.Megaparsec as M
 import Text.Megaparsec.Char
@@ -33,8 +35,10 @@ import ElispParse.NumberParser
 
 import Debug.Trace
 
+--TODO: PLEASE refactor this
+
 parseProgram :: Parser ASTVal
-parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
+parseProgram = runRP exprFP . label "program" . between spaceConsumer eof $ f <$> many expr
     where
         f (x:[]) = x
         f xs = ASTList xs
@@ -47,8 +51,8 @@ parseProgram = label "program" . between spaceConsumer eof $ f <$> many expr
 --             |*> many alphaNumChar
 --     (|*>) = liftM2 (<>)
 
-parseIdentifier :: Parser ASTVal
-parseIdentifier = lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
+parseIdentifier :: RecursiveParser ASTVal
+parseIdentifier = liftRP . lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
     where
     p = T.pack <$> some (choice [
         alphaNumChar,
@@ -56,56 +60,72 @@ parseIdentifier = lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
         try $ mfilter (not . flip elem ['"', '\'', ',', '`', '(', ')', '[', ']']) punctuationChar])
         -- what exactly is legal as an elisp identifier is ambigious at best and unspecified at worst
 
-parseList :: Parser ASTVal
-parseList = lexeme . label "list" $ ASTList <$> parens (many expr)
+parseList :: RecursiveParser ASTVal
+parseList = ask >>= \recurse ->
+  liftRP . lexeme . label "list" $ ASTList <$> parens (many recurse)
 
-parseQuote :: Parser ASTVal
-parseQuote = lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens (many expr))
+parseQuote :: RecursiveParser ASTVal
+parseQuote = ask >>= \recurse ->
+  liftRP . lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens (many recurse))
 
 parseBackquote :: Parser ASTVal
-parseBackquote = lexeme . label "backquote" $ ASTBackquote <$> (char '`' *> parens (many parseBackquoteElement))
+parseBackquote = runRP backquotedExpr . lexeme . label "backquote"  $
+   ASTBackquote <$> (char '`' *> parens (many parseBackquotedAST))
     where
-        parseBackquoteElement =  try parseUnquoted
-                            <|> try parseSpliced
-                            <|> try parseQuoted
-        parseUnquoted = Unquoted <$> (char ',' *> expr)
-        parseSpliced = Spliced <$> (string ",@" *> expr)
-        parseQuoted = Quoted <$> expr
+        parseBackquotedAST =  try parseUnquoted
+                          <|> try parseSpliced
+                          <|> try parseQuoted
+        parseUnquoted = do
+          recurse <- ask
+          fmap Unquoted $ char ',' *> liftRP recurse
+        parseSpliced = do
+          recurse <- ask
+          fmap Spliced $ string ",@" *> liftRP recurse
+        parseQuoted = do
+          recurse <- ask
+          Quoted <$> liftRP recurse
+        backquotedExpr = fix $ \e -> ASTBackquote . pure <$> runRP e parseBackquotedAST
 
-parseVector :: Parser ASTVal
-parseVector = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> brackets (many expr)
+parseVector :: RecursiveParser ASTVal
+parseVector = ask >>= \recurse ->
+  liftRP . lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> brackets (many recurse)
 
-parseChar :: Parser ASTVal
-parseChar = lexeme . label "character" $ ASTChar <$> (char '?' *> L.charLiteral)
+parseChar :: RecursiveParser ASTVal
+parseChar = liftRP . lexeme . label "character" $ ASTChar <$> (char '?' *> L.charLiteral)
 
-parseString :: Parser ASTVal
-parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> manyTill L.charLiteral (char '"')))
+parseString :: RecursiveParser ASTVal
+parseString = liftRP . lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> manyTill L.charLiteral (char '"')))
 
-parseCons :: Parser ASTVal
-parseCons = lexeme . label "cons" $
-    parens (ASTCons <$> (lexeme $ someTill expr (char '.')) <*> expr)
+parseCons :: RecursiveParser ASTVal
+parseCons = ask >>= \recurse ->
+  liftRP . lexeme . label "cons" $
+    parens (ASTCons <$> (lexeme $ someTill recurse (char '.')) <*> recurse)
 
-parseTable :: Parser ASTVal
-parseTable = lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some expr))
+parseTable :: RecursiveParser ASTVal
+parseTable = ask >>= \recurse ->
+  liftRP . lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some recurse))
 
-parseCharTable :: Parser ASTVal
-parseCharTable = lexeme . label "charTable" $ ASTCharTable <$> (string "#^" *> brackets (many expr))
+parseCharTable :: RecursiveParser ASTVal
+parseCharTable = ask >>= \recurse ->
+  liftRP . lexeme . label "charTable" $ ASTCharTable <$> (string "#^" *> brackets (many recurse))
 
-parseCharSubTable :: Parser ASTVal
-parseCharSubTable = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many expr))
+parseCharSubTable :: RecursiveParser ASTVal
+parseCharSubTable = ask >>= \recurse ->
+  liftRP . lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many recurse))
 
-parseBoolVector :: Parser ASTVal
+parseBoolVector :: RecursiveParser ASTVal
 parseBoolVector = lexeme . label "boolVector" $ string "#&" *>
     (ASTBoolVector <$> L.decimal <*> (parseString <&> \case (ASTString x) -> x))
 
-parseByteCode :: Parser ASTVal
-parseByteCode = lexeme . label "byteCode" $ char '#' *>
-    (ASTByteCode <$> brackets (many expr))
+parseByteCode :: RecursiveParser ASTVal
+parseByteCode = ask >>= \recurse ->
+    liftRP . lexeme . label "byteCode" $
+    char '#' *> (ASTByteCode <$> brackets (many recurse))
 
-expr :: Parser ASTVal
+expr :: RecursiveParser ASTVal
 expr =  try parseCons
     <|> try parseQuote
-    <|> try parseBackquote
+    <|> try (liftRP parseBackquote)
     <|> try parseList
     <|> try parseVector
     <|> try parseTable
@@ -113,8 +133,12 @@ expr =  try parseCons
     <|> try parseCharSubTable
     <|> try parseByteCode
     <|> try parseBoolVector
-    <|> try parseFloat      -- we dont want to accidentally consume the integer part
-    <|> try parseInt        -- of a float as an integer or identifier, so prioritize.
-    <|> try parseChar       -- alternative is to put notFollowedBy in parseInt
-    <|> try parseIdentifier -- and also identifier
+    <|> try (liftRP parseFloat)      -- we dont want to accidentally consume the integer part
+    <|> try (liftRP parseInt)        -- of a float as an integer or identifier, so prioritize.
+    <|> try parseChar                -- alternative is to put notFollowedBy in parseInt
+    <|> try parseIdentifier          -- and also identifier
     <|> try parseString
+
+
+exprFP :: Parser ASTVal
+exprFP = fix $ \e -> runRP e expr
