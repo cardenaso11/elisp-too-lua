@@ -125,7 +125,7 @@ renderFloatString (FloatString integerText maybeFractionalText maybeExponentText
     where
         safeTail = T.drop 1
 
-parseFloat :: Parser (ASTVal a)
+parseFloat :: BaseParser a
 parseFloat = lexeme . label "float" $ ASTFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
     where
         readFloat = \case -- multiway if wouldnt make it shorter
@@ -180,7 +180,7 @@ readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeC
     where
         l = length xs
 
-parseInt :: Parser (ASTVal a) -- TODO: add a test to make sure we dont accidentally parse identifiers as ints
+parseInt :: BaseParser a -- TODO: add a test to make sure we dont accidentally parse identifiers as ints
 parseInt = lexeme . label "integer" $ ASTInt <$> do
     sign <- optional parseSign
     radix <- let defaultRadix = 10 in

@@ -17,6 +17,8 @@ module ElispParse.Common
     , BackquotedAST (..)
     , Parser
     , RecursiveParser (..)
+    , BaseParser
+    , CompositeParser
     , liftRP
     , runRP
     -- , mapAST
@@ -64,6 +66,9 @@ deriving newtype instance Monad (RecursiveParser r)
 deriving newtype instance MonadPlus (RecursiveParser r)
 deriving newtype instance MonadReader (Parser r) (RecursiveParser r)
 deriving newtype instance MonadParsec Void T.Text (RecursiveParser r)
+
+type BaseParser a = Parser (ASTVal a)
+type CompositeParser a = Parser a -> Parser (ASTVal a)
 
 -- ElVal only contans enough information to effeciently represent and
 -- manipulate an elisp data structure. NOTE: this only represents an AST
