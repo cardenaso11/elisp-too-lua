@@ -19,7 +19,7 @@ module ElispParse.Common
     , RecursiveParser (..)
     , liftRP
     , runRP
-    , mapAST
+    -- , mapAST
     , (|*>)
     , parseText
     , mfromMaybe
@@ -56,47 +56,47 @@ import qualified Text.Megaparsec.Char.Lexer as L
 -- ^Parser is the type of a recursive parser
 type Parser = Parsec Void T.Text
 -- |RecursiveParser is the type of a recursive parser
-newtype RecursiveParser a = RecursiveParser (ReaderT (Parser ASTVal) Parser a)
-deriving newtype instance Functor RecursiveParser
-deriving newtype instance Applicative RecursiveParser
-deriving newtype instance Alternative RecursiveParser
-deriving newtype instance Monad RecursiveParser
-deriving newtype instance MonadPlus RecursiveParser
-deriving newtype instance MonadReader (Parser ASTVal) RecursiveParser
-deriving newtype instance MonadParsec Void T.Text RecursiveParser
+newtype RecursiveParser r a = RecursiveParser (ReaderT (Parser r) Parser a)
+deriving newtype instance Functor (RecursiveParser r)
+deriving newtype instance Applicative (RecursiveParser r)
+deriving newtype instance Alternative (RecursiveParser r)
+deriving newtype instance Monad (RecursiveParser r)
+deriving newtype instance MonadPlus (RecursiveParser r)
+deriving newtype instance MonadReader (Parser r) (RecursiveParser r)
+deriving newtype instance MonadParsec Void T.Text (RecursiveParser r)
 
 -- ElVal only contans enough information to effeciently represent and
 -- manipulate an elisp data structure. NOTE: this only represents an AST
 -- therefore we dont put in any STRef s ElObjPtr stuff in here
-data ASTVal = ASTList [ASTVal] -- TODO: add character tables
-            | ASTQuote [ASTVal]
+data ASTVal a = ASTList [a] -- TODO: add character tables
+            | ASTQuote [a]
             | ASTBackquote BackquotedAST -- TODO: quasioquoting
-            | ASTVector (HashableVector ASTVal)
-            | ASTTable [ASTVal]
-            | ASTCons [ASTVal] ASTVal
+            | ASTVector (HashableVector a)
+            | ASTTable [a]
+            | ASTCons [a] a
             | ASTIdentifier Identifier
-            | ASTCharTable [ASTVal]
-            | ASTCharSubTable [ASTVal]
+            | ASTCharTable [a]
+            | ASTCharSubTable [a]
             | ASTFloat Double -- praying emacs people didnt do anything weird
             | ASTInt Int
             | ASTChar Char
             | ASTString T.Text
             | ASTBoolVector Int T.Text
-            | ASTByteCode [ASTVal] -- there really isnt much to do at parsing level
+            | ASTByteCode [a] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
 
-data BackquotedAST = Quoted ASTVal
-                        | Unquoted ASTVal
-                        | Spliced ASTVal
+data BackquotedAST = Quoted (ASTVal BackquotedAST)
+                        | Unquoted (ASTVal BackquotedAST)
+                        | Spliced (ASTVal BackquotedAST)
     deriving (Eq, Generic, Show, Hashable)
 
-mapAST :: (ASTVal -> b) -> BackquotedAST -> b
-mapAST f = \case
-  Quoted a -> f a
-  Unquoted a -> f a
-  Spliced a -> f a
+-- mapAST :: ((ASTVal a) -> b) -> BackquotedAST -> b
+-- mapAST f = \case
+--   Quoted a -> f a
+--   Unquoted a -> f a
+--   Spliced a -> f a
 
-instance (IsString ASTVal) where
+instance (IsString (ASTVal a)) where
     fromString = ASTString . T.pack
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
@@ -108,9 +108,9 @@ instance (IsString ASTVal) where
 -- be very yucky and im not sure how fast it would be.
 -- maybe try targetting luajit bytecode
 
-deriving instance Show ASTVal
+deriving instance Show a => Show (ASTVal a)
 
-deriving instance Hashable ASTVal
+deriving instance Hashable a => Hashable (ASTVal a)
 
 -- not sure if this is worth avoiding orphan instances
 newtype HashableVector a = HashableVector (V.Vector a)
@@ -129,10 +129,10 @@ newtype Identifier = Identifier T.Text
 deriving anyclass instance Hashable Identifier
 
 
-liftRP :: Parser a -> RecursiveParser a
+liftRP :: Parser a -> RecursiveParser r a
 liftRP = RecursiveParser . lift
 
-runRP :: Parser ASTVal -> RecursiveParser a -> Parser a
+runRP :: Parser r -> RecursiveParser r a -> Parser a
 runRP exp (RecursiveParser parser) = runReaderT parser exp
 
 (|*>) :: forall m n . (Monad m, Monoid n) => m n -> m n -> m n
