@@ -1,11 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 
 module ElispParse.ElispParser (parseProgram) where
@@ -40,7 +36,7 @@ import Debug.Trace
 parseProgram :: Parser ASTVal
 parseProgram = label "program" . between spaceConsumer eof $ f <$> many exprFP
     where
-        f (x:[]) = x
+        f [x] = x
         f xs = ASTList xs
 
 parseIdentifier :: RecursiveParser ASTVal
@@ -90,8 +86,8 @@ parseString = liftRP . lexeme . label "string" $ ASTString <$> (char '"' *> (T.p
 
 parseCons :: RecursiveParser ASTVal
 parseCons = ask >>= \recurse ->
-  liftRP . lexeme . label "cons" $
-    parens (ASTCons <$> (lexeme $ someTill recurse (char '.')) <*> recurse)
+  liftRP . lexeme . label "cons" . parens $
+    ASTCons <$> lexeme (someTill recurse (char '.')) <*> recurse
 
 parseTable :: RecursiveParser ASTVal
 parseTable = ask >>= \recurse ->

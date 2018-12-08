@@ -15,9 +15,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 
@@ -98,8 +95,8 @@ parseFloatString = do
                         choice [T.pack <$> some digitChar, string nan, string inf]
         parseFraction requireFraction =
             (string . T.singleton $ dot)
-            |*> ((case requireFraction of DoRequireFraction -> id; DoNotRequireFraction -> option "")
-                    (T.pack <$> some digitChar))
+            <> (case requireFraction of DoRequireFraction -> id; DoNotRequireFraction -> option "")
+                    (T.pack <$> some digitChar)
         unaryThenBinary = (.) . (.)
     let hasExponent = do
                 fractionalText <- optional $ parseFraction DoNotRequireFraction
@@ -107,7 +104,7 @@ parseFloatString = do
                 pure $ FloatString integerText fractionalText (Just exponentText)
         hasFractional = do
                 fractionalText <- parseFraction DoRequireFraction
-                exponentText <- optional $ parseExponent
+                exponentText <- optional parseExponent
                 pure $ FloatString integerText (Just fractionalText) exponentText 
     choice [try hasExponent, try hasFractional]
 
@@ -194,16 +191,16 @@ parseInt = lexeme . label "integer" $ ASTInt <$> do
         fromMaybe defaultRadix <$> optional parseRadix
     digitText <- let allowedDigits = take radix allRadixDigits in
         some $ oneOf allowedDigits
-    pure . (maybe id evalSign sign) $ readIntAnyRadix radix digitText
+    pure . maybe id evalSign sign $ readIntAnyRadix radix digitText
 
 isIntDigit :: Int -> Bool
-isIntDigit i = (i >= 0 && i <= 9) 
+isIntDigit i = i >= 0 && i <= 9
 
 isCharDecDigit :: Char -> Bool
-isCharDecDigit c = (c >= '0' && c <= '9')
+isCharDecDigit c = c >= '0' && c <= '9'
 
 isCharNonDecDigit :: Char -> Bool
-isCharNonDecDigit c = (normalizeCase c >= normalizeCase 'a' || normalizeCase c <= normalizeCase 'z')
+isCharNonDecDigit c = normalizeCase c >= normalizeCase 'a' || normalizeCase c <= normalizeCase 'z'
 
 isCharDigit :: Char -> Bool
 isCharDigit c = isCharDecDigit c || isCharNonDecDigit c
@@ -213,6 +210,6 @@ digitToChar i = mfilter' (isIntDigit i) (chr $ i + (ord '0' - 0))
 
 charToDigit :: Char -> Maybe Radix
 charToDigit c =
-    if  | isCharDecDigit c -> Just ((ord c) - (ord '0' - 0))
-        | isCharNonDecDigit c -> Just ((ord c) - (ord (normalizeCase 'a')) + 10)
+    if  | isCharDecDigit c -> Just (ord c - (ord '0' - 0))
+        | isCharNonDecDigit c -> Just (ord c - ord (normalizeCase 'a') + 10)
         | otherwise -> Nothing
