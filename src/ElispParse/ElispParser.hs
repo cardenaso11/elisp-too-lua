@@ -58,13 +58,13 @@ parseQuote recurse = lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens 
 parseBackquote :: BaseParser a
 parseBackquote = lexeme . label "backquote"  $
    --ASTQuote . fmap ASTBackquote
-   ASTBackquote <$> (char '`' *> backquotedExprFP)
+   ASTBackquote . Quoted <$> (char '`' *> parseList (parseBackquotedAST backquotedExprFP))
     where
-        parseBackquotedAST recurse =  try (parseUnquoted recurse)
-                          <|> try (parseSpliced recurse)
+        parseBackquotedAST recurse =  try (parseSpliced recurse)
+                          <|> try (parseUnquoted recurse)
                           <|> try (parseQuoted recurse)
-        parseUnquoted recurse = fmap (Unquoted . id) $ char ',' *> recurse
         parseSpliced recurse = fmap Spliced $ string (",@" :: T.Text) *> recurse
+        parseUnquoted recurse = fmap (Unquoted . id) $ char ',' *> recurse
         parseQuoted recurse = Quoted <$> recurse
         backquotedExprFP = fix $ \e -> expr (parseBackquotedAST e)
 
@@ -103,7 +103,7 @@ expr recurse =  let ar f = (f recurse) in
   choice $ try <$>
   [ ar parseCons
   , ar parseQuote
-  -- , parseBackquote
+  , parseBackquote
   , ar parseList
   , ar parseVector
   , ar parseTable

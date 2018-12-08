@@ -19,6 +19,7 @@ module ElispParse.Common
     , RecursiveParser (..)
     , BaseParser
     , CompositeParser
+    , mapAST
     , liftRP
     , runRP
     -- , mapAST
@@ -95,11 +96,11 @@ data BackquotedAST = Quoted (ASTVal BackquotedAST)
                         | Spliced (ASTVal BackquotedAST)
     deriving (Eq, Generic, Show, Hashable)
 
--- mapAST :: ((ASTVal a) -> b) -> BackquotedAST -> b
--- mapAST f = \case
---   Quoted a -> f a
---   Unquoted a -> f a
---   Spliced a -> f a
+mapAST :: (ASTVal BackquotedAST -> b) -> BackquotedAST -> b
+mapAST f = \case
+  Quoted a -> f a
+  Unquoted a -> f a
+  Spliced a -> f a
 
 instance (IsString (ASTVal a)) where
     fromString = ASTString . T.pack
