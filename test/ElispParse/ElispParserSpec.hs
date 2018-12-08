@@ -54,7 +54,7 @@ spec = do
             it "parses backquoted expressions" $ do
                 shouldParse (runParseProgram
                     "`(1 ,2 3)")
-                    (ASTBackquote
+                    (ASTQuote $ ASTBackquote <$>
                          [ Quoted (ASTInt 1)
                          , Unquoted (ASTInt 2)
                          , Quoted (ASTInt 3)
@@ -63,7 +63,7 @@ spec = do
             it "parses backquoted expressions containing identifiers" $ do
                 shouldParse (runParseProgram
                     "`(1 ,2 abc)")
-                    (ASTBackquote
+                    (ASTQuote $ ASTBackquote <$>
                          [ Quoted (ASTInt 1)
                          , Unquoted (ASTInt 2)
                          , Quoted (ASTIdentifier (Identifier "abc"))
