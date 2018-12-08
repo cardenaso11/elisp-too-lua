@@ -69,7 +69,7 @@ deriving newtype instance MonadParsec Void T.Text RecursiveParser
 -- manipulate an elisp data structure. NOTE: this only represents an AST
 -- therefore we dont put in any STRef s ElObjPtr stuff in here
 data ASTVal = ASTList [ASTVal] -- TODO: add character tables
-            | ASTQuote [ASTVal]
+            | ASTQuote ASTVal
             | ASTBackquote BackquotedAST -- TODO: quasioquoting
             | ASTVector (HashableVector ASTVal)
             | ASTTable [ASTVal]

@@ -24,21 +24,21 @@ spec = do
     describe "parseProgram" $ do
         let runParseProgram = parseText parseProgram
 
-        let oneTwoThree = (ASTInt <$> [1,2,3]) in do
+        let oneTwoThree = ASTList (ASTInt <$> [1,2,3]) in do
             it "parses quoted expressions" $ do
                 shouldParse (runParseProgram
                     "'(1 2 3)")
                     (ASTQuote oneTwoThree)
                 shouldParse (runParseProgram
                     "'(a b c)")
-                    (ASTQuote $ ASTIdentifier . Identifier <$> ["a","b","c"])
+                    (ASTQuote . ASTList $ ASTIdentifier . Identifier <$> ["a","b","c"])
             it "parses nested quoted expressions" $ do
                 shouldParse (runParseProgram
                     "'( '(1 2 3) '(1 2 3) '(1 2 3))")
-                    (ASTQuote $ replicate 3 (ASTQuote oneTwoThree))
+                    (ASTQuote $ ASTList (replicate 3 (ASTQuote oneTwoThree)))
                 shouldParse (runParseProgram
                     "'( (1 2 3) (1 2 3) (1 2 3))")
-                    (ASTQuote $ replicate 3 (ASTList oneTwoThree))
+                    (ASTQuote $ ASTList (replicate 3 oneTwoThree))
 
         let fourFiveSix = ASTInt <$> [4,5,6] in do
             it "parses lists of expressions" $ do
@@ -54,7 +54,7 @@ spec = do
             it "parses backquoted expressions" $ do
                 shouldParse (runParseProgram
                     "`(1 ,2 3)")
-                    (ASTQuote $ ASTBackquote <$>
+                    (ASTBackquote . Quoted . ASTList $ ASTBackquote <$>
                          [ Quoted (ASTInt 1)
                          , Unquoted (ASTInt 2)
                          , Quoted (ASTInt 3)
@@ -63,7 +63,7 @@ spec = do
             it "parses backquoted expressions containing identifiers" $ do
                 shouldParse (runParseProgram
                     "`(1 ,2 abc)")
-                    (ASTQuote $ ASTBackquote <$>
+                    (ASTBackquote . Quoted . ASTList $ ASTBackquote <$>
                          [ Quoted (ASTInt 1)
                          , Unquoted (ASTInt 2)
                          , Quoted (ASTIdentifier (Identifier "abc"))

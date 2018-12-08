@@ -54,11 +54,11 @@ parseList = ask >>= \recurse ->
 
 parseQuote :: RecursiveParser ASTVal
 parseQuote = ask >>= \recurse ->
-  liftRP . lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens (many recurse))
+  liftRP . lexeme . label "quote" $ ASTQuote <$> (char '\'' *> recurse)
 
 parseBackquote :: Parser ASTVal
 parseBackquote = runRP backquotedExpr . lexeme . label "backquote"  $
-   ASTQuote . fmap ASTBackquote <$> (char '`' *> parens (many parseBackquotedAST))
+  ASTBackquote <$> (char '`' *> parseBackquotedAST)
     where
         parseBackquotedAST =  try parseUnquoted
                           <|> try parseSpliced
