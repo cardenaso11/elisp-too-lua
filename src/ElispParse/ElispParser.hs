@@ -38,7 +38,7 @@ import Debug.Trace
 --TODO: PLEASE refactor this
 
 parseProgram :: Parser ASTVal
-parseProgram = runRP exprFP . label "program" . between spaceConsumer eof $ f <$> many expr
+parseProgram = label "program" . between spaceConsumer eof $ f <$> many exprFP
     where
         f (x:[]) = x
         f xs = ASTList xs
@@ -70,21 +70,22 @@ parseQuote = ask >>= \recurse ->
 
 parseBackquote :: Parser ASTVal
 parseBackquote = runRP backquotedExpr . lexeme . label "backquote"  $
-   ASTBackquote <$> (char '`' *> parens (many parseBackquotedAST))
+   ASTQuote . fmap ASTBackquote <$> (char '`' *> parens (many parseBackquotedAST))
     where
         parseBackquotedAST =  try parseUnquoted
                           <|> try parseSpliced
                           <|> try parseQuoted
         parseUnquoted = do
           recurse <- ask
-          fmap Unquoted $ char ',' *> liftRP recurse
+          fmap Unquoted $ char ',' *> expr
         parseSpliced = do
           recurse <- ask
-          fmap Spliced $ string ",@" *> liftRP recurse
+          fmap Spliced $ string ",@" *> expr
         parseQuoted = do
           recurse <- ask
-          Quoted <$> liftRP recurse
-        backquotedExpr = fix $ \e -> ASTBackquote . pure <$> runRP e parseBackquotedAST
+          Quoted <$> expr
+        backquotedExpr = fix $ \e -> runRP e (ASTBackquote <$> parseBackquotedAST)
+          -- fix $ \e -> ASTBackquote . pure <$> runRP e parseBackquotedAST
 
 parseVector :: RecursiveParser ASTVal
 parseVector = ask >>= \recurse ->
