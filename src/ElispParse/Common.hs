@@ -1,7 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -10,7 +8,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module ElispParse.Common
@@ -112,14 +109,8 @@ instance (IsString ASTVal) where
 -- maybe try targetting luajit bytecode
 
 deriving instance Show ASTVal
--- deriving instance Show ElObjPtr
-
--- -- make unique references
--- data ElObjPtr = ElObjPtr { pointerVal :: Int, dereference :: ElVal }
-    -- deriving Generic
 
 deriving instance Hashable ASTVal
--- deriving instance Hashable ElObjPtr
 
 -- not sure if this is worth avoiding orphan instances
 newtype HashableVector a = HashableVector (V.Vector a)
@@ -131,8 +122,6 @@ instance forall a. Show a => Show (HashableVector a)
 instance forall a. Hashable a => Hashable (HashableVector a)
     where
         hashWithSalt salt (HashableVector v) = hashWithSalt salt (V.toList v)
-
--- ellist = ElObjPtr . ElList
 
 newtype Identifier = Identifier T.Text
     deriving (Eq, Show, Generic)

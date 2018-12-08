@@ -43,14 +43,6 @@ parseProgram = label "program" . between spaceConsumer eof $ f <$> many exprFP
         f (x:[]) = x
         f xs = ASTList xs
 
--- parseIdentifier :: Parser 
--- parseIdentifier = ElIdentifier . Identifier <$> lexeme (p <?> "identifier")
---     where
---     p = T.pack <$>
---             (tokenToChunk (Proxy @String) <$> choice [letterChar, symbolChar]) -- apparently emacs lets you just start with numbers too
---             |*> many alphaNumChar
---     (|*>) = liftM2 (<>)
-
 parseIdentifier :: RecursiveParser ASTVal
 parseIdentifier = liftRP . lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
     where
@@ -85,7 +77,6 @@ parseBackquote = runRP backquotedExpr . lexeme . label "backquote"  $
           recurse <- ask
           Quoted <$> expr
         backquotedExpr = fix $ \e -> runRP e (ASTBackquote <$> parseBackquotedAST)
-          -- fix $ \e -> ASTBackquote . pure <$> runRP e parseBackquotedAST
 
 parseVector :: RecursiveParser ASTVal
 parseVector = ask >>= \recurse ->
