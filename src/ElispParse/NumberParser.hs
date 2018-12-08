@@ -43,11 +43,11 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import ElispParse.Common
 
 import Debug.Trace
-    
+
 data Sign where
     Positive :: Sign
     Negative :: Sign
-    
+
     deriving (Show)
 
 data FloatString = FloatString
@@ -57,7 +57,7 @@ data FloatString = FloatString
     }
 data ShouldRequireDigits = DoRequireFraction | DoNotRequireFraction
 
-type PString s = (IsString s) => s 
+type PString s = (IsString s) => s
 
 nan = "NaN" :: PString s
 inf = "INF" :: PString s
@@ -75,8 +75,6 @@ parseSign = oneOf [plus, minus] >>= \x ->
     if  | x == plus -> pure Positive
         | x == minus -> pure Negative
         | otherwise -> mzero
-
-
 
 evalSign :: Sign -> Int -> Int
 evalSign = \case
@@ -109,8 +107,6 @@ parseFloatString = do
     choice [try hasExponent, try hasFractional]
 
 deriving instance Show FloatString
--- instance Show FloatString where
-    -- show = T.unpack . renderFloatString
 
 renderFloatString :: FloatString -> T.Text -- maybe make this more elegant ?
 renderFloatString (FloatString integerText maybeFractionalText maybeExponentText) =
