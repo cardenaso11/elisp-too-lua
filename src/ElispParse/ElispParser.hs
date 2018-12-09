@@ -3,6 +3,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module ElispParse.ElispParser (parseProgram) where
@@ -117,22 +119,10 @@ expr recurse =  let ar f = (f recurse) in
   , parseIdentifier
   , parseString
   ]
-  --     try $ applyRec parseCons
-  -- <|> try (parseQuote recurse)
-    -- <|> try (liftRP parseBackquote)
-    -- <|> try parseList
-    -- <|> try parseVector
-    -- <|> try parseTable
-    -- <|> try parseCharTable
-    -- <|> try parseCharSubTable
-    -- <|> try parseByteCode
-    -- <|> try parseBoolVector
-    -- <|> try (liftRP parseFloat)      -- we dont want to accidentally consume the integer part
-    -- <|> try (liftRP parseInt)        -- of a float as an integer or identifier, so prioritize.
-    -- <|> try parseChar                -- alternative is to put notFollowedBy in parseInt
-    -- <|> try parseIdentifier          -- and also identifier
-    -- <|> try parseString
-
+ -- we dont want to accidentally consume the integer part
+ -- of a float as an integer or identifier, so prioritize.
+ -- alternative is to put notFollowedBy in parseInt
+ -- and also identifier
 
 exprFP :: Parser InfiniteAST
 exprFP = fix $ \e -> Fix <$> expr e
@@ -142,6 +132,8 @@ newtype Fix a = Fix { unFix :: a (Fix a) }
 
 instance (Show (a (Fix a))) => Show (Fix a) where
   show (Fix a) = show a
+deriving instance (Eq (a (Fix a))) => Eq (Fix a)
+deriving instance (Hashable (a (Fix a))) => Hashable (Fix a)
 
 mapFix :: (a (Fix a) -> a1 (Fix a1)) -> Fix a -> Fix a1
 mapFix f struct = Fix $ f (unFix struct)
