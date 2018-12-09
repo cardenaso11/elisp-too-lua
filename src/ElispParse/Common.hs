@@ -9,6 +9,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module ElispParse.Common
     ( ASTVal (..)
@@ -19,6 +20,8 @@ module ElispParse.Common
     , RecursiveParser (..)
     , BaseParser
     , CompositeParser
+    , Fix (..)
+    , InfiniteAST
     , mapAST
     , liftRP
     , runRP
@@ -102,8 +105,16 @@ mapAST f = \case
   Unquoted a -> f a
   Spliced a -> f a
 
+newtype Fix a = Fix { unFix :: a (Fix a) }
+
 instance (IsString (ASTVal a)) where
     fromString = ASTString . T.pack
+instance (Show (a (Fix a))) => Show (Fix a) where
+  show (Fix a) = show a
+deriving newtype instance (Eq (a (Fix a))) => Eq (Fix a)
+deriving newtype instance (Hashable (a (Fix a))) => Hashable (Fix a)
+
+type InfiniteAST = Fix ASTVal
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.

@@ -5,9 +5,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE UndecidableInstances #-}
 
-module ElispParse.ElispParser (parseProgram) where
+module ElispParse.ElispParser (parseProgram, exprFP) where
 
 import GHC.Generics
 import qualified Data.Text as T
@@ -128,15 +127,14 @@ exprFP :: Parser InfiniteAST
 exprFP = fix $ \e -> Fix <$> expr e
 
 
-newtype Fix a = Fix { unFix :: a (Fix a) }
+-- newtype Fix a = Fix { unFix :: a (Fix a) }
 
-instance (Show (a (Fix a))) => Show (Fix a) where
-  show (Fix a) = show a
-deriving instance (Eq (a (Fix a))) => Eq (Fix a)
-deriving instance (Hashable (a (Fix a))) => Hashable (Fix a)
-
-mapFix :: (a (Fix a) -> a1 (Fix a1)) -> Fix a -> Fix a1
-mapFix f struct = Fix $ f (unFix struct)
-
+-- instance (Show (a (Fix a))) => Show (Fix a) where
 --   show (Fix a) = show a
-type InfiniteAST = Fix ASTVal
+-- deriving instance (Eq (a (Fix a))) => Eq (Fix a)
+-- deriving instance (Hashable (a (Fix a))) => Hashable (Fix a)
+
+-- mapFix :: (a (Fix a) -> a1 (Fix a1)) -> Fix a -> Fix a1
+-- mapFix f struct = Fix $ f (unFix struct)
+
+-- type InfiniteAST = Fix ASTVal

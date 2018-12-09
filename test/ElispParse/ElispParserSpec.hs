@@ -17,107 +17,108 @@ import           Data.Void
 import qualified Data.Text                     as T
 import Text.RawString.QQ
 
-import           ElispParse.Common
-import           ElispParse.ElispParser
+import ElispParse.TestCommon
+import ElispParse.Common
+import ElispParse.ElispParser
 
 spec = do
     describe "parseProgram" $ do
-        let runParseProgram = parseText parseProgram
+        let runParseExprFP = parseText exprFP
 
-        let oneTwoThree = (ASTInt <$> [1,2,3]) in do
+        let oneTwoThree = (fASTInt <$> [1,2,3]) in do
             it "parses quoted expressions" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "'(1 2 3)")
-                    (ASTQuote oneTwoThree)
-                shouldParse (runParseProgram
+                    (fASTQuote oneTwoThree)
+                shouldParse' (runParseExprFP
                     "'(a b c)")
-                    (ASTQuote $ ASTIdentifier . Identifier <$> ["a","b","c"])
+                    (fASTQuote $ fASTIdentifier . Identifier <$> ["a","b","c"])
             it "parses nested quoted expressions" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "'( '(1 2 3) '(1 2 3) '(1 2 3))")
-                    (ASTQuote $ replicate 3 (ASTQuote oneTwoThree))
-                shouldParse (runParseProgram
+                    (fASTQuote $ replicate 3 (fASTQuote oneTwoThree))
+                shouldParse (runParseExprFP
                     "'( (1 2 3) (1 2 3) (1 2 3))")
-                    (ASTQuote $ replicate 3 (ASTList oneTwoThree))
+                    (fASTQuote $ replicate 3 (fASTList oneTwoThree))
 
-        let fourFiveSix = ASTInt <$> [4,5,6] in do
+        let fourFiveSix = fASTInt <$> [4,5,6] in do
             it "parses lists of expressions" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "(4 5 6)")
-                    (ASTList fourFiveSix)
+                    (fASTList fourFiveSix)
             it "parses nested lists of expressions" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "(   (4 5 6) (4 5 6) (4 5 6) )")
-                    (ASTList $ replicate 3 (ASTList fourFiveSix))
+                    (fASTList $ replicate 3 (fASTList fourFiveSix))
 
         do
             it "parses backquoted expressions" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "`(1 ,2 3)")
-                    (ASTQuote $ ASTBackquote <$>
+                    (fASTBackquote . Quoted . ASTList $
                          [ Quoted (ASTInt 1)
                          , Unquoted (ASTInt 2)
                          , Quoted (ASTInt 3)
                          ])
 
             it "parses backquoted expressions containing identifiers" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "`(1 ,2 abc)")
-                    (ASTQuote $ ASTBackquote <$>
+                    (fASTBackquote . Quoted . ASTList $
                          [ Quoted (ASTInt 1)
                          , Unquoted (ASTInt 2)
                          , Quoted (ASTIdentifier (Identifier "abc"))
                          ])
 
-        let emptyVector = ASTVector (HashableVector V.empty)
-            zeroOneTwo = ASTVector (HashableVector (V.generate 3 ASTInt)) in do
+        let emptyVector = fASTVector (HashableVector V.empty)
+            zeroOneTwo = fASTVector (HashableVector (V.generate 3 fASTInt)) in do
             it "parses the empty vector" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "[]")
                     emptyVector
             it "parses non-empty vectors" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "[0 1 2]")
                     zeroOneTwo
 
-        let hashConstructor = ASTIdentifier (Identifier "hash-table")
-            table = ASTTable (hashConstructor : map ASTInt [1, 10, 2, 20]) in do
+        let hashConstructor = fASTIdentifier (Identifier "hash-table")
+            table = fASTTable (hashConstructor : map fASTInt [1, 10, 2, 20]) in do
             it "parses tables" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "#s(hash-table 1 10 2 20)")
                     table
 
         do
             it "parses identifiers" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "garfield")
-                    (ASTIdentifier (Identifier "garfield"))
+                    (fASTIdentifier (Identifier "garfield"))
 
-        let a = ASTChar 'a'
-            b = ASTChar 'b'
-            c = ASTChar 'c'
-            newlnC = ASTChar '\n'
-            tabC = ASTChar '\t' in do
+        let a = fASTChar 'a'
+            b = fASTChar 'b'
+            c = fASTChar 'c'
+            newlnC = fASTChar '\n'
+            tabC = fASTChar '\t' in do
             it "parses character literals" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "?a")
                     a
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "?b")
                     b
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "?c")
                     c
-                
+
             it "parses escaped character literals" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "?\\n")
                     newlnC
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "?\\t")
                     tabC
-            
-                    
+
+
         let owo = [r|
                 Rawr x3 nuzzles how are you pounces on you you're so warm o3
                 o notices you have a bulge o: someone's happy ;) nuzzles yo
@@ -147,54 +148,54 @@ spec = do
             quote t = T.cons '"' $ T.snoc t '"' in do
 
                 it "parses string literals" $ do
-                    shouldParse (runParseProgram $
+                    shouldParse' (runParseExprFP $
                         quote owo)
-                        (ASTString owo)
-                    shouldParse (runParseProgram $
+                        (fASTString owo)
+                    shouldParse' (runParseExprFP $
                         quote string2)
-                        (ASTString . escape . quote $ string2)
-                    shouldParse (runParseProgram $
+                        (fASTString . escape . quote $ string2)
+                    shouldParse' (runParseExprFP $
                         quote eee)
-                        (ASTString . escape . quote $ eee)
+                        (fASTString . escape . quote $ eee)
 
         it "parses escaped string literals" $ do
-            shouldParse (runParseProgram
+            shouldParse' (runParseExprFP
                 [r|"\n"|])
-                "\n"
-            shouldParse (runParseProgram
+                (fASTString "\n")
+            shouldParse' (runParseExprFP
                 [r|"\t"|])
-                "\t"
+                (fASTString "\t")
 
-        
-        let d = ASTIdentifier $ Identifier "d"
-            one = ASTInt 1
-            two = ASTInt 2 in do
+
+        let d = fASTIdentifier $ Identifier "d"
+            one = fASTInt 1
+            two = fASTInt 2 in do
             it "parses individual cons cells" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "(1 . 2)")
-                    (ASTCons [one] two)
+                    (fASTCons [one] two)
 
             it "parses improper lists as cons cells" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "(1 d . 2)")
-                    (ASTCons [one, d] two)
-            
+                    (fASTCons [one, d] two)
+
             it "parses character tables" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "#^[1 2 d]")
-                    (ASTCharTable [one, two, d])
+                    (fASTCharTable [one, two, d])
 
             it "parses character subtables" $ do
-                shouldParse (runParseProgram
+                shouldParse' (runParseExprFP
                     "#^^[d 2 1]")
-                    (ASTCharSubTable  [d, two, one])        
+                    (fASTCharSubTable [d, two, one])
 
         it "parses boolvector" $ do
-            shouldParse (runParseProgram
+            shouldParse' (runParseExprFP
                 [r|#&4"hewwo"|])
-                (ASTBoolVector 4 "hewwo")
-                
+                (fASTBoolVector 4 "hewwo")
+
         it "parses bytecode" $ do
-            shouldParse (runParseProgram
+            shouldParse' (runParseExprFP
                 "#[1 2 3 4]")
-                (ASTByteCode $ ASTInt <$> [1, 2, 3, 4])
+                (fASTByteCode $ fASTInt <$> [1, 2, 3, 4])
