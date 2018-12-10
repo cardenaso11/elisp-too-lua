@@ -27,7 +27,7 @@ import Text.Megaparsec as M
 import Text.Megaparsec.Error
 import Text.Megaparsec.Char
 import Data.Void
-import qualified Data.Text as T
+import qualified Data.Text.Lazy as T
 
 import ElispParse.Common
 import ElispParse.NumberParser
@@ -38,7 +38,7 @@ shouldParse' = shouldParse
 fASTList :: [Fix AST] -> Fix AST
 fASTList = Fix . ASTList
 
-fASTQuote :: [Fix AST] -> Fix AST
+fASTQuote :: Fix AST -> Fix AST
 fASTQuote = Fix . ASTQuote
 
 fASTBackquote :: BackquotedAST (Fix AST) -> Fix AST

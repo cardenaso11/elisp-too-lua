@@ -65,7 +65,7 @@ parseList recurse = lexeme . label "list" . fmap ASTList $
 -- | Parse a quoted elisp list.
 parseQuote :: forall a. CompositeParser a
 parseQuote recurse = lexeme . label "quote" . fmap ASTQuote $
-  char '\'' *> parens (many recurse)
+  char '\'' *> recurse
 
 -- | Parse a backquoted elisp list.
 parseBackquote :: forall a. CompositeParser a

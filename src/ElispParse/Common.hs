@@ -65,7 +65,7 @@ type CompositeParser a = Parser a -> Parser (AST a)
 --   this is primarily so we can guarantee in the types backquoted elements
 --   can only appear inside BackquotedAST
 data AST a = ASTList [a]
-              | ASTQuote [a]
+              | ASTQuote a
               | ASTBackquote (BackquotedAST a)
               | ASTVector (HashableVector a)
               | ASTTable [a]

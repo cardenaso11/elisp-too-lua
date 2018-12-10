@@ -14,7 +14,7 @@ import           Text.Megaparsec               as M
 import           Text.Megaparsec.Char
 import qualified Data.Vector                   as V
 import           Data.Void
-import qualified Data.Text                     as T
+import qualified Data.Text.Lazy                as T
 import Text.RawString.QQ
 
 import ElispParse.TestCommon
@@ -29,17 +29,20 @@ spec = do
             it "parses quoted expressions" $ do
                 shouldParse' (runParseExprFP
                     "'(1 2 3)")
-                    (fASTQuote oneTwoThree)
+                    (fASTQuote . fASTList $ oneTwoThree)
                 shouldParse' (runParseExprFP
                     "'(a b c)")
-                    (fASTQuote $ fASTIdentifier . Identifier <$> ["a","b","c"])
+                    (fASTQuote . fASTList $ fASTIdentifier . Identifier <$> ["a","b","c"])
+                shouldParse' (runParseExprFP
+                     "'a")
+                     (fASTQuote . fASTIdentifier . Identifier $ "a")
             it "parses nested quoted expressions" $ do
                 shouldParse' (runParseExprFP
                     "'( '(1 2 3) '(1 2 3) '(1 2 3))")
-                    (fASTQuote $ replicate 3 (fASTQuote oneTwoThree))
+                    (fASTQuote . fASTList $ replicate 3 (fASTQuote . fASTList $ oneTwoThree))
                 shouldParse (runParseExprFP
                     "'( (1 2 3) (1 2 3) (1 2 3))")
-                    (fASTQuote $ replicate 3 (fASTList oneTwoThree))
+                    (fASTQuote . fASTList $ replicate 3 (fASTList oneTwoThree))
 
         let fourFiveSix = fASTInt <$> [4,5,6] in do
             it "parses lists of expressions" $ do
