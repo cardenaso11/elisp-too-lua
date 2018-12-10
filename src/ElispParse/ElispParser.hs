@@ -31,33 +31,42 @@ import ElispParse.NumberParser
 
 import Debug.Trace
 
---TODO: PLEASE refactor this
-
 parseProgram :: Parser (ASTVal InfiniteAST)
-parseProgram = label "program" . between spaceConsumer eof $ ASTList <$> many exprFP
-    -- where
-    --     f [x] = x
-    --     f xs = ASTList xs
+parseProgram = label "program" . between spaceConsumer eof . fmap ASTList $
+  many exprFP
 
 parseIdentifier :: Parser (ASTVal a)
-parseIdentifier = lexeme . label "identifier" $ ASTIdentifier . Identifier <$> p
+parseIdentifier = lexeme . label "identifier" $
+  ASTIdentifier . Identifier <$> p
     where
     p = T.pack <$> some (choice [
         alphaNumChar,
         symbolChar,
-        try $ mfilter (not . flip elem ['"', '\'', ',', '`', '(', ')', '[', ']']) punctuationChar])
-        -- what exactly is legal as an elisp identifier is ambigious at best and unspecified at worst
+        try $
+          mfilter (not . flip elem
+                   ['"'
+                   , '\''
+                   , ','
+                   , '`'
+                   , '('
+                   , ')'
+                   , '['
+                   , ']']) punctuationChar])
+-- what exactly is legal as an elisp identifier is ambigious
+-- at best and unspecified at worst
 
 parseList :: forall a. CompositeParser a
-parseList recurse = lexeme . label "list" $ ASTList <$> parens (many recurse)
+parseList recurse = lexeme . label "list" . fmap ASTList $
+  parens (many recurse)
 
 parseQuote :: forall a. CompositeParser a
-parseQuote recurse = lexeme . label "quote" $ ASTQuote <$> (char '\'' *> parens (many recurse))
+parseQuote recurse = lexeme . label "quote" . fmap ASTQuote $
+  char '\'' *> parens (many recurse)
 
-parseBackquote :: BaseParser a
-parseBackquote = lexeme . label "backquote"  $
-   --ASTQuote . fmap ASTBackquote
-   ASTBackquote . Quoted <$> (char '`' *> parseList (parseBackquotedAST backquotedExprFP))
+parseBackquote :: forall a. BaseParser a
+parseBackquote = lexeme . label "backquote" $
+   ASTBackquote . Quoted <$>
+   (char '`' *> parseList (parseBackquotedAST backquotedExprFP))
     where
         parseBackquotedAST recurse =  try (parseSpliced recurse)
                           <|> try (parseUnquoted recurse)
@@ -67,38 +76,48 @@ parseBackquote = lexeme . label "backquote"  $
         parseQuoted recurse = Quoted <$> recurse
         backquotedExprFP = fix $ \e -> expr (parseBackquotedAST e)
 
-parseVector :: CompositeParser a
-parseVector recurse = lexeme . label "vector" $ ASTVector . HashableVector . V.fromList <$> brackets (many recurse)
+parseVector :: forall a. CompositeParser a
+parseVector recurse = lexeme . label "vector" $
+  ASTVector . HashableVector . V.fromList <$> brackets (many recurse)
 
-parseChar :: BaseParser a
-parseChar = lexeme . label "character" $ ASTChar <$> (char '?' *> L.charLiteral)
+parseChar :: forall a. BaseParser a
+parseChar = lexeme . label "character" . fmap ASTChar $
+  char '?' *> L.charLiteral
 
-parseString :: BaseParser a
-parseString = lexeme . label "string" $ ASTString <$> (char '"' *> (T.pack <$> manyTill L.charLiteral (char '"')))
+parseString :: forall a. BaseParser a
+parseString = lexeme . label "string" . fmap ASTString $
+  char '"' *> (fmap T.pack . manyTill L.charLiteral $ char '"')
 
-parseCons :: CompositeParser a
+parseCons :: forall a. CompositeParser a
 parseCons recurse = lexeme . label "cons" . parens $
     ASTCons <$> lexeme (someTill recurse (char '.')) <*> recurse
 
-parseTable :: CompositeParser a
-parseTable recurse = lexeme . label "table" $ ASTTable <$> (string "#s" *> parens (some recurse))
+parseTable :: forall a. CompositeParser a
+parseTable recurse = lexeme . label "table" . fmap ASTTable $
+  string "#s" *> parens (some recurse)
 
-parseCharTable :: CompositeParser a
-parseCharTable recurse = lexeme . label "charTable" $ ASTCharTable <$> (string "#^" *> brackets (many recurse))
+parseCharTable :: forall a. CompositeParser a
+parseCharTable recurse = lexeme . label "charTable" . fmap ASTCharTable $
+  string "#^" *> brackets (many recurse)
 
-parseCharSubTable :: CompositeParser a
-parseCharSubTable recurse = lexeme . label "charSubTable" $ ASTCharSubTable <$> (string "#^^" *> brackets (many recurse))
+parseCharSubTable :: forall a. CompositeParser a
+parseCharSubTable recurse =
+  lexeme . label "charSubTable" . fmap ASTCharSubTable $
+  string "#^^" *> brackets (many recurse)
 
-parseBoolVector :: BaseParser a
-parseBoolVector = lexeme . label "boolVector" $ string "#&" *>
-    (ASTBoolVector <$> L.decimal <*> (parseString <&> \case (ASTString x) -> x))
+parseBoolVector :: forall a. BaseParser a
+parseBoolVector = lexeme . label "boolVector" $
+  string "#&"
+  *> (ASTBoolVector
+      <$> L.decimal
+      <*> (parseString <&> \case (ASTString x) -> x))
 
-parseByteCode :: CompositeParser a
+parseByteCode :: forall a. CompositeParser a
 parseByteCode recurse = lexeme . label "byteCode" $
-    char '#' *> (ASTByteCode <$> brackets (many recurse))
+    char '#' *> fmap ASTByteCode (brackets $ many recurse)
 
-expr :: CompositeParser a
-expr recurse =  let ar f = (f recurse) in
+expr :: forall a. CompositeParser a
+expr recurse =  let ar f = f recurse in
   choice $ try <$>
   [ ar parseCons
   , ar parseQuote
@@ -117,22 +136,9 @@ expr recurse =  let ar f = (f recurse) in
   , parseString
   ]
  -- we dont want to accidentally consume the integer part
- -- of a float as an integer or identifier, so prioritize.
+ -- of a float as an integer or identifier, so parser order is important.
  -- alternative is to put notFollowedBy in parseInt
  -- and also identifier
 
 exprFP :: Parser InfiniteAST
 exprFP = fix $ \e -> Fix <$> expr e
-
-
--- newtype Fix a = Fix { unFix :: a (Fix a) }
-
--- instance (Show (a (Fix a))) => Show (Fix a) where
---   show (Fix a) = show a
--- deriving instance (Eq (a (Fix a))) => Eq (Fix a)
--- deriving instance (Hashable (a (Fix a))) => Hashable (Fix a)
-
--- mapFix :: (a (Fix a) -> a1 (Fix a1)) -> Fix a -> Fix a1
--- mapFix f struct = Fix $ f (unFix struct)
-
--- type InfiniteAST = Fix ASTVal
