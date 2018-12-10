@@ -35,47 +35,47 @@ import ElispParse.NumberParser
 shouldParse' :: Either (ParseError Char Void) InfiniteAST -> InfiniteAST -> Expectation
 shouldParse' = shouldParse
 
-fASTList :: [Fix ASTVal] -> Fix ASTVal
+fASTList :: [Fix AST] -> Fix AST
 fASTList = Fix . ASTList
 
-fASTQuote :: [Fix ASTVal] -> Fix ASTVal
+fASTQuote :: [Fix AST] -> Fix AST
 fASTQuote = Fix . ASTQuote
 
-fASTBackquote :: BackquotedAST -> Fix ASTVal
+fASTBackquote :: BackquotedAST (Fix AST) -> Fix AST
 fASTBackquote = Fix . ASTBackquote
 
-fASTVector :: HashableVector (Fix ASTVal) -> Fix ASTVal
+fASTVector :: HashableVector (Fix AST) -> Fix AST
 fASTVector = Fix . ASTVector
 
-fASTTable :: [Fix ASTVal] -> Fix ASTVal
+fASTTable :: [Fix AST] -> Fix AST
 fASTTable = Fix . ASTTable
 
-fASTCons :: [Fix ASTVal] -> Fix ASTVal -> Fix ASTVal
+fASTCons :: [Fix AST] -> Fix AST -> Fix AST
 fASTCons = (Fix .) . ASTCons
 
-fASTIdentifier :: Identifier -> Fix ASTVal
+fASTIdentifier :: Identifier -> Fix AST
 fASTIdentifier = Fix . ASTIdentifier
 
-fASTCharTable :: [Fix ASTVal] -> Fix ASTVal
+fASTCharTable :: [Fix AST] -> Fix AST
 fASTCharTable = Fix . ASTCharTable
 
-fASTCharSubTable :: [Fix ASTVal] -> Fix ASTVal
+fASTCharSubTable :: [Fix AST] -> Fix AST
 fASTCharSubTable = Fix . ASTCharSubTable
 
-fASTFloat :: Double -> Fix ASTVal
+fASTFloat :: Double -> Fix AST
 fASTFloat = Fix . ASTFloat
 
-fASTInt :: Int -> Fix ASTVal
+fASTInt :: Int -> Fix AST
 fASTInt = Fix . ASTInt
 
-fASTChar :: Char -> Fix ASTVal
+fASTChar :: Char -> Fix AST
 fASTChar = Fix . ASTChar
 
-fASTString :: T.Text -> Fix ASTVal
+fASTString :: T.Text -> Fix AST
 fASTString = Fix . ASTString
 
-fASTBoolVector :: Int -> T.Text -> Fix ASTVal
+fASTBoolVector :: Int -> T.Text -> Fix AST
 fASTBoolVector = (Fix .) . ASTBoolVector
 
-fASTByteCode :: [Fix ASTVal] -> Fix ASTVal
+fASTByteCode :: [Fix AST] -> Fix AST
 fASTByteCode = Fix . ASTByteCode

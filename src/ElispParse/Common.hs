@@ -19,6 +19,7 @@ module ElispParse.Common
     , CompositeParser
     , Fix (..)
     , InfiniteAST
+    , InfiniteBackquotedAST
     , parseText
     , mfromMaybe
     , mfilter'
@@ -59,7 +60,7 @@ type CompositeParser a = Parser a -> Parser (AST a)
 
 data AST a = ASTList [a]
               | ASTQuote [a]
-              | ASTBackquote BackquotedAST
+              | ASTBackquote (BackquotedAST a)
               | ASTVector (HashableVector a)
               | ASTTable [a]
               | ASTCons [a] a
@@ -74,9 +75,9 @@ data AST a = ASTList [a]
               | ASTByteCode [a] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
 
-data BackquotedAST = Quoted (AST BackquotedAST)
-                   | Unquoted (AST BackquotedAST)
-                   | Spliced (AST BackquotedAST)
+data BackquotedAST a = Quoted (AST (BackquotedAST a))
+                     | Unquoted a
+                     | Spliced (AST (BackquotedAST a))
     deriving (Eq, Generic, Show, Hashable)
 
 newtype Fix a = Fix { unFix :: a (Fix a) }
@@ -89,6 +90,7 @@ deriving newtype instance (Eq (a (Fix a))) => Eq (Fix a)
 deriving newtype instance (Hashable (a (Fix a))) => Hashable (Fix a)
 
 type InfiniteAST = Fix AST
+type InfiniteBackquotedAST = Fix BackquotedAST
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.

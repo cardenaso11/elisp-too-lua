@@ -57,7 +57,7 @@ spec = do
                     "`(1 ,2 3)")
                     (fASTBackquote . Quoted . ASTList $
                          [ Quoted (ASTInt 1)
-                         , Unquoted (ASTInt 2)
+                         , Unquoted (fASTInt 2)
                          , Quoted (ASTInt 3)
                          ])
 
@@ -66,7 +66,7 @@ spec = do
                     "`(1 ,2 abc)")
                     (fASTBackquote . Quoted . ASTList $
                          [ Quoted (ASTInt 1)
-                         , Unquoted (ASTInt 2)
+                         , Unquoted (fASTInt 2)
                          , Quoted (ASTIdentifier (Identifier "abc"))
                          ])
 
@@ -75,10 +75,10 @@ spec = do
                     "`(1 ,(+ 2 3) 4)")
                     (fASTBackquote . Quoted . ASTList $
                         [ Quoted (ASTInt 1)
-                        , Unquoted (ASTList $
-                            [ Unquoted (ASTIdentifier (Identifier "+"))
-                            , Unquoted (ASTInt 2)
-                            , Unquoted (ASTInt 3)
+                        , Unquoted (fASTList
+                            [ fASTIdentifier (Identifier "+")
+                            , fASTInt 2
+                            , fASTInt 3
                             ])
                         , Quoted (ASTInt 4)
                         ])
