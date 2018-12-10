@@ -44,19 +44,23 @@ import ElispParse.Common
 
 import Debug.Trace
 
+-- | A Sign is either Positive or Negative.
 data Sign where
     Positive :: Sign
     Negative :: Sign
 
     deriving (Show)
 
+-- | A float has an integer part and optional fractional and exponent parts.
 data FloatString = FloatString
     {   integerPart :: T.Text
     ,   fractionalPart :: Maybe T.Text
     ,   exponentPart :: Maybe T.Text
     }
+
 data ShouldRequireDigits = DoRequireFraction | DoNotRequireFraction
 
+-- | Type for generic strings.
 type PString s = (IsString s) => s
 
 nan = "NaN" :: PString s
@@ -134,6 +138,7 @@ renderFloatString
   where
     safeTail = T.drop 1
 
+-- | Parse an emacs floating point number.
 parseFloat :: BaseParser a
 parseFloat = lexeme . label "float" $
   ASTFloat . readFloat . T.unpack . renderFloatString
@@ -155,32 +160,40 @@ parseFloat = lexeme . label "float" $
 
 type Radix = Int
 
+-- | Maximum radix supported by emacs.
 maxRadix :: Radix
 maxRadix = 36
 
+-- | Minimum radix.
 minRadix :: Radix
 minRadix = 2
 
+-- | Special binary, octal, and hex radix symbols.
 letterRadices :: [String]
 letterRadices = normalizeCaseS <$> ["b", "o", "x"]
 
+-- | Radix symbols for radices from 2 through 36.
 integerRadices :: [String]
 integerRadices = (<> normalizeCaseS "r") . show
   <$> enumFromTo minRadix maxRadix
 
+-- | All valid radices, including the special 'b', 'o' and 'x' radices.
 validRadices :: [String]
 validRadices = letterRadices <> integerRadices
 
+-- | Set of all digits that can appear in numbers of different radices.
 allRadixDigits :: [Char]
 allRadixDigits = enumFromTo '0' '9'
   <> enumFromTo (normalizeCase 'a') (normalizeCase 'z')
 
+-- | Read a string as a radix of the form 'b', 'o', 'x', or 'rN' for some number N.
 readRadix :: String -> Maybe Radix
 readRadix r = radixTable ^.at (normalizeCaseS r)
   where -- b -> 2, o -> 8, x -> 16
     radixTable =
       M.fromList $ zip letterRadices [2,8,16] <> zip integerRadices [2..36]
 
+-- | Parse a radix.
 parseRadix :: Parser Radix
 parseRadix = join $ mfromMaybe . readRadix . T.unpack <$>
                 (char '#' *>
@@ -191,6 +204,7 @@ parseRadix = join $ mfromMaybe . readRadix . T.unpack <$>
 -- 30-36 before 3, etc. thankfully, the r at the end removes
 -- any ambiguous parses, making my life easier
 
+-- | Given a radix and a string representation of a number, read it as an integer.
 readIntAnyRadix :: Radix -> String -> Int
 readIntAnyRadix r xs =
   ifoldr' (\i c acc ->
@@ -200,6 +214,7 @@ readIntAnyRadix r xs =
     where
         l = length xs
 
+-- | Parse an emacs integer.
 parseInt :: BaseParser a
 parseInt = lexeme . label "integer" $ ASTInt <$> do
     sign <- optional parseSign
@@ -209,14 +224,17 @@ parseInt = lexeme . label "integer" $ ASTInt <$> do
         some $ oneOf allowedDigits
     pure . maybe id evalSign sign $ readIntAnyRadix radix digitText
 
+-- | Indicate whether a character is a decimal digit.
 isCharDecDigit :: Char -> Bool
 isCharDecDigit c = c >= '0' && c <= '9'
 
+-- | Indicate whether a character is a non-decimal digit (i.e., an uppercase or lowercase letter).
 isCharNonDecDigit :: Char -> Bool
 isCharNonDecDigit c =
   normalizeCase c >= normalizeCase 'a'
   || normalizeCase c <= normalizeCase 'z'
 
+-- | Convert a digit character to the integer value it represents, or Nothing if not a valid digit.
 charToDigit :: Char -> Maybe Radix
 charToDigit c =
     if  | isCharDecDigit c -> Just (ord c - (ord '0' - 0))
