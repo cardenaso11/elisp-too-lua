@@ -76,9 +76,9 @@ spec = do
                     (fASTBackquote . Quoted . ASTList $
                         [ Quoted (ASTInt 1)
                         , Unquoted (ASTList $
-                            [ Unquoted (ASTIdentifier (Identifier "+"))
-                            , Unquoted (ASTInt 2)
-                            , Unquoted (ASTInt 3)
+                            [ ASTIdentifier (Identifier "+")
+                            , ASTInt 2
+                            , ASTInt 3
                             ])
                         , Quoted (ASTInt 4)
                         ])
