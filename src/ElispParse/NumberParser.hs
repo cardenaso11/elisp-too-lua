@@ -23,7 +23,7 @@ module ElispParse.NumberParser
     , parseInt) where
 
 import GHC.Generics
-import qualified Data.Text as T
+import qualified Data.Text.Lazy as T
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
 import Control.Monad
