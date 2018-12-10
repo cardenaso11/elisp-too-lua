@@ -5,7 +5,7 @@
 -- each type signature. i cant just put the abstracted constrained type
 -- signature on the left hand side of each equation because ghc would
 -- need impredicative polymorphism to typecheck it.
--- to be honest this is extremely unnecessary and dumb BUT
+-- to be honest this is unnecessary and kinda lame BUT
 -- i invested way too much time trying to get it to look pretty.
 -- so im not taking it out
 {-# LANGUAGE OverloadedStrings #-}
@@ -82,60 +82,73 @@ evalSign = \case
     Negative -> negate . abs
 
 -- exactly two rules here:
--- if it has an exponent, always float. this includes if preceded by dot w/o digits
--- if it has a dot followed by at least one digit, or "NaN", or "INF", always float
+-- if it has an exponent, float. this includes if preceded by dot w/o digits
+-- if it has a dot followed by at least 1 digit, or "NaN", or "INF", float
 parseFloatString :: Parser FloatString
 parseFloatString = do
     signText <- optional parseSign
     integerText <- option "0" $ T.pack <$> some digitChar
-    let parseExponent = string' "e" <> -- rewrite so exponent can have sign too, put sign into exponentpart, also move whole thing sign out of signpart into ingegerpartd
-                        option "" (T.singleton <$> oneOf [plus, minus]) <>
-                        choice [T.pack <$> some digitChar, string nan, string inf]
+    let parseExponent =
+          string' "e"
+          <> option "" (T.singleton <$> oneOf [plus, minus])
+          <> choice [T.pack <$> some digitChar, string nan, string inf]
         parseFraction requireFraction =
-            (string . T.singleton $ dot)
-            <> (case requireFraction of DoRequireFraction -> id; DoNotRequireFraction -> option "")
-                    (T.pack <$> some digitChar)
-        unaryThenBinary = (.) . (.)
-    let hasExponent = do
-                fractionalText <- optional $ parseFraction DoNotRequireFraction
-                exponentText <- parseExponent
-                pure $ FloatString integerText fractionalText (Just exponentText)
-        hasFractional = do
-                fractionalText <- parseFraction DoRequireFraction
-                exponentText <- optional parseExponent
-                pure $ FloatString integerText (Just fractionalText) exponentText 
+            string (T.singleton dot)
+            <> (case requireFraction of
+                   DoRequireFraction -> id
+                   DoNotRequireFraction -> option "")
+            (T.pack <$> some digitChar)
+    let hasExponent =
+          do
+            fractionalText <- optional $ parseFraction DoNotRequireFraction
+            exponentText <- parseExponent
+            pure $ FloatString integerText fractionalText (Just exponentText)
+        hasFractional =
+          do
+            fractionalText <- parseFraction DoRequireFraction
+            exponentText <- optional parseExponent
+            pure $ FloatString integerText (Just fractionalText) exponentText
     choice [try hasExponent, try hasFractional]
 
 deriving instance Show FloatString
 
 renderFloatString :: FloatString -> T.Text -- maybe make this more elegant ?
-renderFloatString (FloatString integerText maybeFractionalText maybeExponentText) =
+renderFloatString
+  (FloatString integerText maybeFractionalText maybeExponentText) =
     case maybeExponentText of
-        Just x  | safeTail x == nan -> nan
-                | safeTail x == plusNan -> plusNan
-                | safeTail x == minusNan -> minusNan
-                | safeTail x == inf -> inf
-                | safeTail x == plusInf -> plusInf
-                | safeTail x == minusInf -> minusInf
-        _ -> T.concat
-                [ integerText
-                , fromMaybe ".0" $ mfilter (/=T.singleton dot) maybeFractionalText -- elisp can handle N.eK, but haskell's read cannot
-                , fromMaybe (T.cons e "0") $ mfilter (/=T.singleton e) maybeExponentText -- might as well normalize exponent too
-                ]
-    where
-        safeTail = T.drop 1
+      Just x  | safeTail x == nan -> nan
+              | safeTail x == plusNan -> plusNan
+              | safeTail x == minusNan -> minusNan
+              | safeTail x == inf -> inf
+              | safeTail x == plusInf -> plusInf
+              | safeTail x == minusInf -> minusInf
+      _ -> T.concat
+           [ integerText
+           , fromMaybe ".0"
+             $ mfilter (/=T.singleton dot) maybeFractionalText
+           -- elisp can handle N.eK, but haskell's read cannot
+           , fromMaybe (T.cons e "0")
+             $ mfilter (/=T.singleton e) maybeExponentText
+           -- might as well normalize exponent too
+           ]
+  where
+    safeTail = T.drop 1
 
 parseFloat :: BaseParser a
-parseFloat = lexeme . label "float" $ ASTFloat . readFloat . T.unpack . renderFloatString <$> parseFloatString
+parseFloat = lexeme . label "float" $
+  ASTFloat . readFloat . T.unpack . renderFloatString
+  <$> parseFloatString
     where
         readFloat = \case -- multiway if wouldnt make it shorter
             x   | x == nan -> nanVal
-                | x == minusNan -> nanVal -- i THINK elisp doesnt do anything weird w nan sign,,, also i cannot figure out how to get -nan
+                | x == minusNan -> nanVal
+                -- i THINK elisp doesnt do anything weird w nan sign,,,
+                -- also i cannot figure out how to get -nan
                 | x == inf -> plusInfVal
                 | x == plusInf -> plusInfVal
                 | x == minusInf -> minusInfVal
                 | otherwise -> read @Double x
-        -- weird, but apparently haskell does not have nan or inf literals
+        -- weird, but haskell does not have nan or inf literals
         nanVal = 0/0
         plusInfVal = 1/0
         minusInfVal = negate plusInfVal
@@ -152,18 +165,21 @@ letterRadices :: [String]
 letterRadices = normalizeCaseS <$> ["b", "o", "x"]
 
 integerRadices :: [String]
-integerRadices = (<> normalizeCaseS "r") . show <$> enumFromTo minRadix maxRadix
+integerRadices = (<> normalizeCaseS "r") . show
+  <$> enumFromTo minRadix maxRadix
 
 validRadices :: [String]
 validRadices = letterRadices <> integerRadices
 
 allRadixDigits :: [Char]
-allRadixDigits = enumFromTo '0' '9' <> enumFromTo (normalizeCase 'a') (normalizeCase 'z')
+allRadixDigits = enumFromTo '0' '9'
+  <> enumFromTo (normalizeCase 'a') (normalizeCase 'z')
 
 readRadix :: String -> Maybe Radix
 readRadix r = radixTable ^.at (normalizeCaseS r)
-            where -- b -> 2, o -> 8, x -> 16
-                radixTable = M.fromList $ zip letterRadices [2,8,16] <> zip integerRadices [2..36]
+  where -- b -> 2, o -> 8, x -> 16
+    radixTable =
+      M.fromList $ zip letterRadices [2,8,16] <> zip integerRadices [2..36]
 
 parseRadix :: Parser Radix
 parseRadix = join $ mfromMaybe . readRadix . T.unpack <$>
@@ -176,7 +192,11 @@ parseRadix = join $ mfromMaybe . readRadix . T.unpack <$>
 -- any ambiguous parses, making my life easier
 
 readIntAnyRadix :: Radix -> String -> Int
-readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeCase $ c) * (r ^ (l - (i+1))) + acc) 0 xs
+readIntAnyRadix r xs =
+  ifoldr' (\i c acc ->
+             (fromJust . charToDigit . normalizeCase $ c)
+             * (r ^ (l - (i+1))) + acc)
+  0 xs
     where
         l = length xs
 
@@ -193,7 +213,9 @@ isCharDecDigit :: Char -> Bool
 isCharDecDigit c = c >= '0' && c <= '9'
 
 isCharNonDecDigit :: Char -> Bool
-isCharNonDecDigit c = normalizeCase c >= normalizeCase 'a' || normalizeCase c <= normalizeCase 'z'
+isCharNonDecDigit c =
+  normalizeCase c >= normalizeCase 'a'
+  || normalizeCase c <= normalizeCase 'z'
 
 charToDigit :: Char -> Maybe Radix
 charToDigit c =
