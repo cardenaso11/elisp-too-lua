@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module ElispParse.Common
-    ( ASTVal (..)
+    ( AST (..)
     , HashableVector (..)
     , Identifier (..)
     , BackquotedAST (..)
@@ -50,47 +50,45 @@ import Text.Megaparsec as M
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
--- ^Parser is the type of our elisp parser: note that there are no error messages for now
+-- | Parser is the type of our elisp parser.
+--   note that there are no error messages for now.
 type Parser = Parsec Void T.Text
 
-type BaseParser a = Parser (ASTVal a)
-type CompositeParser a = Parser a -> Parser (ASTVal a)
+type BaseParser a = Parser (AST a)
+type CompositeParser a = Parser a -> Parser (AST a)
 
--- ElVal only contans enough information to effeciently represent and
--- manipulate an elisp data structure. NOTE: this only represents an AST
--- therefore we dont put in any STRef s ElObjPtr stuff in here
-data ASTVal a = ASTList [a] -- TODO: add character tables
-            | ASTQuote [a]
-            | ASTBackquote BackquotedAST -- TODO: quasioquoting
-            | ASTVector (HashableVector a)
-            | ASTTable [a]
-            | ASTCons [a] a
-            | ASTIdentifier Identifier
-            | ASTCharTable [a]
-            | ASTCharSubTable [a]
-            | ASTFloat Double -- praying emacs people didnt do anything weird
-            | ASTInt Int
-            | ASTChar Char
-            | ASTString T.Text
-            | ASTBoolVector Int T.Text
-            | ASTByteCode [a] -- there really isnt much to do at parsing level
+data AST a = ASTList [a]
+              | ASTQuote [a]
+              | ASTBackquote BackquotedAST
+              | ASTVector (HashableVector a)
+              | ASTTable [a]
+              | ASTCons [a] a
+              | ASTIdentifier Identifier
+              | ASTCharTable [a]
+              | ASTCharSubTable [a]
+              | ASTFloat Double -- praying emacs people didnt do anything weird
+              | ASTInt Int
+              | ASTChar Char
+              | ASTString T.Text
+              | ASTBoolVector Int T.Text
+              | ASTByteCode [a] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
 
-data BackquotedAST = Quoted (ASTVal BackquotedAST)
-                        | Unquoted (ASTVal BackquotedAST)
-                        | Spliced (ASTVal BackquotedAST)
+data BackquotedAST = Quoted (AST BackquotedAST)
+                   | Unquoted (AST BackquotedAST)
+                   | Spliced (AST BackquotedAST)
     deriving (Eq, Generic, Show, Hashable)
 
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
-instance (IsString (ASTVal a)) where
+instance (IsString (AST a)) where
     fromString = ASTString . T.pack
 instance (Show (a (Fix a))) => Show (Fix a) where
   show (Fix a) = show a
 deriving newtype instance (Eq (a (Fix a))) => Eq (Fix a)
 deriving newtype instance (Hashable (a (Fix a))) => Hashable (Fix a)
 
-type InfiniteAST = Fix ASTVal
+type InfiniteAST = Fix AST
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
@@ -101,20 +99,17 @@ type InfiniteAST = Fix ASTVal
 -- be very yucky and im not sure how fast it would be.
 -- maybe try targetting luajit bytecode
 
-deriving instance Show a => Show (ASTVal a)
+deriving instance Show a => Show (AST a)
 
-deriving instance Hashable a => Hashable (ASTVal a)
+deriving instance Hashable a => Hashable (AST a)
 
 -- not sure if this is worth avoiding orphan instances
 newtype HashableVector a = HashableVector (V.Vector a)
-    deriving Eq
-
-instance forall a. Show a => Show (HashableVector a)
-    where
-        show (HashableVector v) = show v
-instance forall a. Hashable a => Hashable (HashableVector a)
-    where
-        hashWithSalt salt (HashableVector v) = hashWithSalt salt (V.toList v)
+  deriving Eq
+instance forall a. Show a => Show (HashableVector a) where
+  show (HashableVector v) = show v
+instance forall a. Hashable a => Hashable (HashableVector a) where
+  hashWithSalt salt (HashableVector v) = hashWithSalt salt (V.toList v)
 
 newtype Identifier = Identifier T.Text
     deriving (Eq, Show, Generic)
@@ -127,7 +122,8 @@ parseText :: forall a.
     -> Either (ParseError Char Void) a
 parseText p = parse p ""
 
--- probably want to migrate away from stack eventually so i can just pull in monadplus
+-- probably want to migrate away from stack eventually so
+-- we can just pull in monadplus
 mfromMaybe :: MonadPlus m => Maybe a -> m a
 mfromMaybe = maybe mzero pure
 
@@ -140,7 +136,8 @@ normalizeCase = toLower
 normalizeCaseS :: String -> String -- convention here will be to lowercase
 normalizeCaseS = fmap normalizeCase
 
-specialForms :: [T.Text] -- i doubt the parser is gonna use these but im not compiling this list again lol
+-- i doubt the parser is gonna use these but im not compiling this list again lol
+specialForms :: [T.Text]
 specialForms = ["and", "catch", "cond", "condition-case", "defconst",
     "defvar", "function", "if", "interactive", "lambda", "let", "let*",
     "or", "prog1", "prog2", "progn", "quote", "save-current-buffer",

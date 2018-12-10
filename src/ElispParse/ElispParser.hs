@@ -31,11 +31,11 @@ import ElispParse.NumberParser
 
 import Debug.Trace
 
-parseProgram :: Parser (ASTVal InfiniteAST)
+parseProgram :: Parser (AST InfiniteAST)
 parseProgram = label "program" . between spaceConsumer eof . fmap ASTList $
   many exprFP
 
-parseIdentifier :: Parser (ASTVal a)
+parseIdentifier :: Parser (AST a)
 parseIdentifier = lexeme . label "identifier" $
   ASTIdentifier . Identifier <$> p
     where
