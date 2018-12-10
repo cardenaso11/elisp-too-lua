@@ -51,13 +51,19 @@ import Text.Megaparsec as M
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
--- | Parser is the type of our elisp parser.
---   note that there are no error messages for now.
+-- | The type of our parser.
+--   Note that there are no error messages for now, hence, Void for errors
 type Parser = Parsec Void T.Text
 
+-- | A terminal parser, that doesn't recurse
 type BaseParser a = Parser (AST a)
+-- | A parser that recurses
 type CompositeParser a = Parser a -> Parser (AST a)
 
+-- | An elisp AST node.
+--   Note the polymorphism in its coinduction:
+--   this is primarily so we can guarantee in the types backquoted elements
+--   can only appear inside BackquotedAST
 data AST a = ASTList [a]
               | ASTQuote [a]
               | ASTBackquote (BackquotedAST a)
@@ -75,11 +81,15 @@ data AST a = ASTList [a]
               | ASTByteCode [a] -- there really isnt much to do at parsing level
     deriving (Eq, Generic)
 
+-- | A backquoted AST node. Note its polymorphism in its coinduction:
+--   this allows us to guarantee in the types that once we leave the backquote
+--   with Unquoted we cannot re-quote or splice
 data BackquotedAST a = Quoted (AST (BackquotedAST a))
                      | Unquoted a
                      | Spliced (AST (BackquotedAST a))
     deriving (Eq, Generic, Show, Hashable)
 
+-- | Type level fixed-point combinator
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
 instance (IsString (AST a)) where
@@ -89,6 +99,8 @@ instance (Show (a (Fix a))) => Show (Fix a) where
 deriving newtype instance (Eq (a (Fix a))) => Eq (Fix a)
 deriving newtype instance (Hashable (a (Fix a))) => Hashable (Fix a)
 
+-- | An AST node that is guaranteed to only contain other AST nodes, ending
+--   in one of the AST terminals (literals)
 type InfiniteAST = Fix AST
 type InfiniteBackquotedAST = Fix BackquotedAST
 
@@ -106,6 +118,8 @@ deriving instance Show a => Show (AST a)
 deriving instance Hashable a => Hashable (AST a)
 
 -- not sure if this is worth avoiding orphan instances
+-- | A newtype for a Hashable Vector of Hashable elements.
+--   This exists to not have an orphaned instance.
 newtype HashableVector a = HashableVector (V.Vector a)
   deriving Eq
 instance forall a. Show a => Show (HashableVector a) where
@@ -113,11 +127,13 @@ instance forall a. Show a => Show (HashableVector a) where
 instance forall a. Hashable a => Hashable (HashableVector a) where
   hashWithSalt salt (HashableVector v) = hashWithSalt salt (V.toList v)
 
+-- | An elisp identifier
 newtype Identifier = Identifier T.Text
     deriving (Eq, Show, Generic)
 
 deriving anyclass instance Hashable Identifier
 
+-- | Parse some text into an AST value or an error
 parseText :: forall a.
     Parser a
     -> T.Text
@@ -132,9 +148,11 @@ mfromMaybe = maybe mzero pure
 mfilter' :: forall a m. MonadPlus m => Bool -> a -> m a
 mfilter' p x = if p then pure x else mzero
 
+-- used to normalize case inside our parser
 normalizeCase :: Char -> Char
 normalizeCase = toLower
 
+-- normalize case of a whole string
 normalizeCaseS :: String -> String -- convention here will be to lowercase
 normalizeCaseS = fmap normalizeCase
 
@@ -146,11 +164,12 @@ specialForms = ["and", "catch", "cond", "condition-case", "defconst",
     "save-excursion", "save-restriction", "setq", "setq-default",
     "track-mouse", "unwind-protect", "while"]
 
+-- consume elisp spaces and comments
 spaceConsumer :: (MonadParsec e s m, Token s ~ Char, Tokens s ~ T.Text) => m ()
 spaceConsumer = L.space space1 lineComment blockComment
     where
-    lineComment = L.skipLineComment (";" :: T.Text)
-    blockComment = empty
+      lineComment = L.skipLineComment (";" :: T.Text)
+      blockComment = empty
 
 lexeme :: MonadParsec e s m
   => Token s ~ Char
@@ -158,6 +177,7 @@ lexeme :: MonadParsec e s m
   => m a -> m a
 lexeme = L.lexeme spaceConsumer
 
+-- | Elisp tokenizer
 symbol :: MonadParsec e s m
   => Token s ~ Char
   => Tokens s ~ T.Text
