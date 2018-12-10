@@ -70,6 +70,19 @@ spec = do
                          , Quoted (ASTIdentifier (Identifier "abc"))
                          ])
 
+            it "parses deeply nested backquoted expressions" $ do
+                shouldParse' (runParseExprFP
+                    "`(1 ,(+ 2 3) 4)")
+                    (fASTBackquote . Quoted . ASTList $
+                        [ Quoted (ASTInt 1)
+                        , Unquoted (ASTList $
+                            [ Unquoted (ASTIdentifier (Identifier "+"))
+                            , Unquoted (ASTInt 2)
+                            , Unquoted (ASTInt 3)
+                            ])
+                        , Quoted (ASTInt 4)
+                        ])
+
         let emptyVector = fASTVector (HashableVector V.empty)
             zeroOneTwo = fASTVector (HashableVector (V.generate 3 fASTInt)) in do
             it "parses the empty vector" $ do
