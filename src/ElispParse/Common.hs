@@ -17,16 +17,10 @@ module ElispParse.Common
     , Identifier (..)
     , BackquotedAST (..)
     , Parser
-    , RecursiveParser (..)
     , BaseParser
     , CompositeParser
     , Fix (..)
     , InfiniteAST
-    , mapAST
-    , liftRP
-    , runRP
-    -- , mapAST
-    , (|*>)
     , parseText
     , mfromMaybe
     , mfilter'
@@ -58,18 +52,8 @@ import Text.Megaparsec as M
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
---NOTE: not using classy mtl here on purpose: not worth effort
--- ^Parser is the type of a recursive parser
+-- ^Parser is the type of our elisp parser: note that there are no error messages for now
 type Parser = Parsec Void T.Text
--- |RecursiveParser is the type of a recursive parser
-newtype RecursiveParser r a = RecursiveParser (ReaderT (Parser r) Parser a)
-deriving newtype instance Functor (RecursiveParser r)
-deriving newtype instance Applicative (RecursiveParser r)
-deriving newtype instance Alternative (RecursiveParser r)
-deriving newtype instance Monad (RecursiveParser r)
-deriving newtype instance MonadPlus (RecursiveParser r)
-deriving newtype instance MonadReader (Parser r) (RecursiveParser r)
-deriving newtype instance MonadParsec Void T.Text (RecursiveParser r)
 
 type BaseParser a = Parser (ASTVal a)
 type CompositeParser a = Parser a -> Parser (ASTVal a)
@@ -98,12 +82,6 @@ data BackquotedAST = Quoted (ASTVal BackquotedAST)
                         | Unquoted (ASTVal BackquotedAST)
                         | Spliced (ASTVal BackquotedAST)
     deriving (Eq, Generic, Show, Hashable)
-
-mapAST :: (ASTVal BackquotedAST -> b) -> BackquotedAST -> b
-mapAST f = \case
-  Quoted a -> f a
-  Unquoted a -> f a
-  Spliced a -> f a
 
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
@@ -144,16 +122,6 @@ newtype Identifier = Identifier T.Text
     deriving (Eq, Show, Generic)
 
 deriving anyclass instance Hashable Identifier
-
-
-liftRP :: Parser a -> RecursiveParser r a
-liftRP = RecursiveParser . lift
-
-runRP :: Parser r -> RecursiveParser r a -> Parser a
-runRP exp (RecursiveParser parser) = runReaderT parser exp
-
-(|*>) :: forall m n . (Monad m, Monoid n) => m n -> m n -> m n
-(|*>) = liftM2 (<>)
 
 parseText :: forall a.
     Parser a

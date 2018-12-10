@@ -88,8 +88,8 @@ parseFloatString :: Parser FloatString
 parseFloatString = do
     signText <- optional parseSign
     integerText <- option "0" $ T.pack <$> some digitChar
-    let parseExponent = string' "e" |*> -- rewrite so exponent can have sign too, put sign into exponentpart, also move whole thing sign out of signpart into ingegerpartd
-                        option "" (T.singleton <$> oneOf [plus, minus]) |*>
+    let parseExponent = string' "e" <> -- rewrite so exponent can have sign too, put sign into exponentpart, also move whole thing sign out of signpart into ingegerpartd
+                        option "" (T.singleton <$> oneOf [plus, minus]) <>
                         choice [T.pack <$> some digitChar, string nan, string inf]
         parseFraction requireFraction =
             (string . T.singleton $ dot)
@@ -180,7 +180,7 @@ readIntAnyRadix r xs = ifoldr' (\i c acc -> (fromJust . charToDigit . normalizeC
     where
         l = length xs
 
-parseInt :: BaseParser a -- TODO: add a test to make sure we dont accidentally parse identifiers as ints
+parseInt :: BaseParser a
 parseInt = lexeme . label "integer" $ ASTInt <$> do
     sign <- optional parseSign
     radix <- let defaultRadix = 10 in
@@ -189,20 +189,11 @@ parseInt = lexeme . label "integer" $ ASTInt <$> do
         some $ oneOf allowedDigits
     pure . maybe id evalSign sign $ readIntAnyRadix radix digitText
 
-isIntDigit :: Int -> Bool
-isIntDigit i = i >= 0 && i <= 9
-
 isCharDecDigit :: Char -> Bool
 isCharDecDigit c = c >= '0' && c <= '9'
 
 isCharNonDecDigit :: Char -> Bool
 isCharNonDecDigit c = normalizeCase c >= normalizeCase 'a' || normalizeCase c <= normalizeCase 'z'
-
-isCharDigit :: Char -> Bool
-isCharDigit c = isCharDecDigit c || isCharNonDecDigit c
-
-digitToChar :: Int -> Maybe Char
-digitToChar i = mfilter' (isIntDigit i) (chr $ i + (ord '0' - 0))
 
 charToDigit :: Char -> Maybe Radix
 charToDigit c =
