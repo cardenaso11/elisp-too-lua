@@ -41,7 +41,7 @@ fASTList = Fix . ASTList
 fASTQuote :: [Fix AST] -> Fix AST
 fASTQuote = Fix . ASTQuote
 
-fASTBackquote :: BackquotedAST -> Fix AST
+fASTBackquote :: BackquotedAST (Fix AST) -> Fix AST
 fASTBackquote = Fix . ASTBackquote
 
 fASTVector :: HashableVector (Fix AST) -> Fix AST

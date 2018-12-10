@@ -63,17 +63,24 @@ parseQuote :: forall a. CompositeParser a
 parseQuote recurse = lexeme . label "quote" . fmap ASTQuote $
   char '\'' *> parens (many recurse)
 
-parseBackquote :: forall a. BaseParser a
-parseBackquote = lexeme . label "backquote" $
+parseBackquote :: forall a. CompositeParser a
+parseBackquote bRecurse = lexeme . label "backquote" $
    ASTBackquote . Quoted <$>
    (char '`' *> parseList (parseBackquotedAST backquotedExprFP))
     where
         parseBackquotedAST recurse =  try (parseSpliced recurse)
                           <|> try (parseUnquoted recurse)
                           <|> try (parseQuoted recurse)
+        parseSpliced :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
         parseSpliced recurse = fmap Spliced $ string (",@" :: T.Text) *> recurse
-        parseUnquoted recurse = fmap (Unquoted . id) $ char ',' *> recurse
+
+        parseUnquoted :: Parser (AST (BackquotedAST a)) -> ParsecT Void T.Text Identity (BackquotedAST a)
+        parseUnquoted recurse = fmap Unquoted $ char ',' *> bRecurse
+
+        parseQuoted :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
         parseQuoted recurse = Quoted <$> recurse
+
+        backquotedExprFP :: Parser (AST (BackquotedAST a))
         backquotedExprFP = fix $ \e -> expr (parseBackquotedAST e)
 
 parseVector :: forall a. CompositeParser a
@@ -116,12 +123,12 @@ parseByteCode :: forall a. CompositeParser a
 parseByteCode recurse = lexeme . label "byteCode" $
     char '#' *> fmap ASTByteCode (brackets $ many recurse)
 
-expr :: forall a. CompositeParser a
+-- expr :: forall a. CompositeParser a
 expr recurse =  let ar f = f recurse in
   choice $ try <$>
   [ ar parseCons
   , ar parseQuote
-  , parseBackquote
+  , ar parseBackquote
   , ar parseList
   , ar parseVector
   , ar parseTable
