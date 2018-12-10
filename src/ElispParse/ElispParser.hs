@@ -31,10 +31,12 @@ import ElispParse.NumberParser
 
 import Debug.Trace
 
+-- | Parse an elisp program as a list of top-level definitions.
 parseProgram :: Parser (AST InfiniteAST)
 parseProgram = label "program" . between spaceConsumer eof . fmap ASTList $
   many exprFP
 
+-- | Parse an elisp identifier.
 parseIdentifier :: Parser (AST a)
 parseIdentifier = lexeme . label "identifier" $
   ASTIdentifier . Identifier <$> p
@@ -55,14 +57,17 @@ parseIdentifier = lexeme . label "identifier" $
 -- what exactly is legal as an elisp identifier is ambigious
 -- at best and unspecified at worst
 
+-- | Parse an elisp list.
 parseList :: forall a. CompositeParser a
 parseList recurse = lexeme . label "list" . fmap ASTList $
   parens (many recurse)
 
+-- | Parse a quoted elisp list.
 parseQuote :: forall a. CompositeParser a
 parseQuote recurse = lexeme . label "quote" . fmap ASTQuote $
   char '\'' *> parens (many recurse)
 
+-- | Parse a backquoted elisp list.
 parseBackquote :: forall a. CompositeParser a
 parseBackquote bRecurse = lexeme . label "backquote" $
    ASTBackquote . Quoted <$>
@@ -83,35 +88,43 @@ parseBackquote bRecurse = lexeme . label "backquote" $
         backquotedExprFP :: Parser (AST (BackquotedAST a))
         backquotedExprFP = fix $ \e -> expr (parseBackquotedAST e)
 
+-- | Parse an elisp vector literal.
 parseVector :: forall a. CompositeParser a
 parseVector recurse = lexeme . label "vector" $
   ASTVector . HashableVector . V.fromList <$> brackets (many recurse)
 
+-- | Parse an elisp char literal.
 parseChar :: forall a. BaseParser a
 parseChar = lexeme . label "character" . fmap ASTChar $
   char '?' *> L.charLiteral
 
+-- | Parse an elisp string literal.
 parseString :: forall a. BaseParser a
 parseString = lexeme . label "string" . fmap ASTString $
   char '"' *> (fmap T.pack . manyTill L.charLiteral $ char '"')
 
+-- | Parse an elisp cons cell.
 parseCons :: forall a. CompositeParser a
 parseCons recurse = lexeme . label "cons" . parens $
     ASTCons <$> lexeme (someTill recurse (char '.')) <*> recurse
 
+-- | Parse an elisp table literal.
 parseTable :: forall a. CompositeParser a
 parseTable recurse = lexeme . label "table" . fmap ASTTable $
   string "#s" *> parens (some recurse)
 
+-- | Parse an elisp char-table literal.
 parseCharTable :: forall a. CompositeParser a
 parseCharTable recurse = lexeme . label "charTable" . fmap ASTCharTable $
   string "#^" *> brackets (many recurse)
 
+-- | Parse an elisp sub-char-table literal.
 parseCharSubTable :: forall a. CompositeParser a
 parseCharSubTable recurse =
   lexeme . label "charSubTable" . fmap ASTCharSubTable $
   string "#^^" *> brackets (many recurse)
 
+-- | Parse an elisp bool-vector literal.
 parseBoolVector :: forall a. BaseParser a
 parseBoolVector = lexeme . label "boolVector" $
   string "#&"
@@ -119,11 +132,13 @@ parseBoolVector = lexeme . label "boolVector" $
       <$> L.decimal
       <*> (parseString <&> \case (ASTString x) -> x))
 
+-- | Parse an elisp byte-code function object.
 parseByteCode :: forall a. CompositeParser a
 parseByteCode recurse = lexeme . label "byteCode" $
     char '#' *> fmap ASTByteCode (brackets $ many recurse)
 
--- expr :: forall a. CompositeParser a
+-- | Parse an elisp expression, supplying a parser to be used recursively.
+expr :: forall a. CompositeParser a
 expr recurse =  let ar f = f recurse in
   choice $ try <$>
   [ ar parseCons
@@ -147,5 +162,6 @@ expr recurse =  let ar f = f recurse in
  -- alternative is to put notFollowedBy in parseInt
  -- and also identifier
 
+-- | Parse an elisp expression.
 exprFP :: Parser InfiniteAST
 exprFP = fix $ \e -> Fix <$> expr e
