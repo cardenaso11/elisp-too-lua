@@ -5,6 +5,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -79,7 +80,7 @@ data AST a = ASTList [a]
               | ASTString T.Text
               | ASTBoolVector Int T.Text
               | ASTByteCode [a] -- there really isnt much to do at parsing level
-    deriving (Eq, Generic)
+    deriving (Eq, Generic, Functor)
 
 -- | A backquoted AST node. Note its polymorphism in its coinduction:
 --   this allows us to guarantee in the types that once we leave the backquote
@@ -87,7 +88,7 @@ data AST a = ASTList [a]
 data BackquotedAST a = Quoted (AST (BackquotedAST a))
                      | Unquoted a
                      | Spliced (AST (BackquotedAST a))
-    deriving (Eq, Generic, Show, Hashable)
+    deriving (Eq, Generic, Show, Hashable, Functor)
 
 -- | Type level fixed-point combinator
 newtype Fix a = Fix { unFix :: a (Fix a) }
@@ -121,7 +122,7 @@ deriving instance Hashable a => Hashable (AST a)
 -- | A newtype for a Hashable Vector of Hashable elements.
 --   This exists to not have an orphaned instance.
 newtype HashableVector a = HashableVector (V.Vector a)
-  deriving Eq
+  deriving (Eq, Functor)
 instance forall a. Show a => Show (HashableVector a) where
   show (HashableVector v) = show v
 instance forall a. Hashable a => Hashable (HashableVector a) where
