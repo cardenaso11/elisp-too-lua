@@ -37,7 +37,7 @@ subst macro args =
 macroExpand :: InfiniteAST -> InfiniteAST
 macroExpand (Fix (ASTList exprs)) =
     let macros = mapMaybe toMacro exprs
-    in  Fix (ASTList (macroExpandWith macros <$> exprs))
+    in  Fix (ASTList (macroExpand . macroExpandWith macros <$> exprs))
 macroExpand (Fix expr) = Fix (macroExpand <$> expr)
 
 toMacro :: InfiniteAST -> Maybe Macro

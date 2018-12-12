@@ -28,31 +28,34 @@ spec = do
                 `shouldBe` (fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "a"), fASTInt 2])
     
     describe "autoMacroExpand" $ do
+        let original = (fASTList [
+                fASTList [
+                    fASTIdentifier (Identifier "defmacro")
+                  , fASTIdentifier (Identifier "foo")
+                  , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
+                  , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
+                  ]
+              , fASTList [
+                    fASTIdentifier (Identifier "foo")
+                  , fASTList [fASTIdentifier (Identifier "a")]
+                  , fASTList [fASTIdentifier (Identifier "b")]
+                  ]
+              ])
+            expected = (fASTList [
+                fASTList [
+                    fASTIdentifier (Identifier "defmacro")
+                  , fASTIdentifier (Identifier "foo")
+                  , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
+                  , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
+                  ]
+              , fASTList [
+                    fASTIdentifier (Identifier "+")
+                  , fASTList [fASTIdentifier (Identifier "b")]
+                  , fASTList [fASTIdentifier (Identifier "a")]
+                  ]
+              ])
         it "locates and expands macros" $ do
-            let original = (fASTList [
-                    fASTList [
-                        fASTIdentifier (Identifier "defmacro")
-                      , fASTIdentifier (Identifier "foo")
-                      , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
-                      , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
-                      ]
-                  , fASTList [
-                      fASTIdentifier (Identifier "foo")
-                    , fASTList [fASTIdentifier (Identifier "a")]
-                    , fASTList [fASTIdentifier (Identifier "b")]
-                    ]
-                  ])
-                expected = (fASTList [
-                    fASTList [
-                        fASTIdentifier (Identifier "defmacro")
-                      , fASTIdentifier (Identifier "foo")
-                      , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
-                      , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
-                      ]
-                  , fASTList [
-                      fASTIdentifier (Identifier "+")
-                    , fASTList [fASTIdentifier (Identifier "b")]
-                    , fASTList [fASTIdentifier (Identifier "a")]
-                    ]
-                  ])
             macroExpand original `shouldBe` expected
+
+        it "locates and expands nested macros" $ do
+            macroExpand (fASTList [original]) `shouldBe` (fASTList [expected])
