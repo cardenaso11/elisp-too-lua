@@ -5,7 +5,8 @@ module ElispParse.MacroExpansionSpec
     )
 where
 
-import           Test.Hspec
+import Test.Hspec
+import Text.RawString.QQ
 
 import ElispParse.TestCommon
 import ElispParse.Common
@@ -14,13 +15,44 @@ import ElispParse.MacroExpansion
 spec = do
     let macroFoo = Macro (Identifier "foo") [Identifier "x", Identifier "y"] (fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")])
         macroBar = Macro (Identifier "bar") [] (fASTInt 0)
+        macros = [macroFoo, macroBar]
     describe "macroExpand" $ do
         it "has no effect on expressions that don't contain a macro" $ do
-            macroExpand macroFoo (fASTInt 1)
+            macroExpandWith macros (fASTInt 1)
                 `shouldBe` (fASTInt 1)
         it "leaves unrelated identifiers alone" $ do
-            macroExpand macroBar (fASTList [fASTIdentifier (Identifier "goo"), fASTList [fASTIdentifier (Identifier "bar")]])
+            macroExpandWith macros (fASTList [fASTIdentifier (Identifier "goo"), fASTList [fASTIdentifier (Identifier "bar")]])
                 `shouldBe` (fASTList [fASTIdentifier (Identifier "goo"), fASTInt 0])
         it "expands macros" $ do
-            macroExpand macroFoo (fASTList [fASTIdentifier (Identifier "foo"), fASTInt 2, fASTIdentifier (Identifier "a")])
+            macroExpandWith macros (fASTList [fASTIdentifier (Identifier "foo"), fASTInt 2, fASTIdentifier (Identifier "a")])
                 `shouldBe` (fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "a"), fASTInt 2])
+    
+    describe "autoMacroExpand" $ do
+        it "locates and expands macros" $ do
+            let original = (fASTList [
+                    fASTList [
+                        fASTIdentifier (Identifier "defmacro")
+                      , fASTIdentifier (Identifier "foo")
+                      , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
+                      , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
+                      ]
+                  , fASTList [
+                      fASTIdentifier (Identifier "foo")
+                    , fASTList [fASTIdentifier (Identifier "a")]
+                    , fASTList [fASTIdentifier (Identifier "b")]
+                    ]
+                  ])
+                expected = (fASTList [
+                    fASTList [
+                        fASTIdentifier (Identifier "defmacro")
+                      , fASTIdentifier (Identifier "foo")
+                      , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
+                      , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
+                      ]
+                  , fASTList [
+                      fASTIdentifier (Identifier "+")
+                    , fASTList [fASTIdentifier (Identifier "b")]
+                    , fASTList [fASTIdentifier (Identifier "a")]
+                    ]
+                  ])
+            macroExpand original `shouldBe` expected
