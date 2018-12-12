@@ -30,6 +30,7 @@ library
       ElispParse.Common
       ElispParse.ElispParser
       ElispParse.NumberParser
+      ElispParse.MacroExpansion
       LuaGen.Types.Function
 --   other-modules:
     --   Paths_elisp_too_lua
