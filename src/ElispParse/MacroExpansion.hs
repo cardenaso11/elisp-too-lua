@@ -6,16 +6,17 @@ module ElispParse.MacroExpansion (
   , macroExpandWith
 ) where
 
-import Data.List (find)
-import Data.Maybe
+import           Data.List (find)
+import           Data.Maybe
 import qualified Data.Text as T
 
-import ElispParse.Common
+import           ElispParse.Common
 
 data Macro = Macro { name :: Identifier, params :: [Identifier], result :: InfiniteAST }
 
 macroExpandWith :: [Macro] -> InfiniteAST -> InfiniteAST
-macroExpandWith macros (Fix (ASTList (x:xs)))
+macroExpandWith macros expr@(Fix (ASTList (x:xs)))
+    | isJust (toMacro expr) = expr
     | Fix (ASTIdentifier ident) <- x, Just macro <- find ((==ident).name) macros = 
         subst macro xs
     | otherwise = 
@@ -35,10 +36,19 @@ subst macro args =
 
 -- | Find macro definitions in the AST and expand their use sites.
 macroExpand :: InfiniteAST -> InfiniteAST
-macroExpand (Fix (ASTList exprs)) =
+macroExpand ex = 
+    let seed = (ex, expandOnce ex)
+        step (a, b) = (b, expandOnce b)
+    in  fst (until (uncurry (==)) step seed)
+
+expandOnce :: InfiniteAST -> InfiniteAST
+expandOnce (Fix (ASTList exprs)) =
     let macros = mapMaybe toMacro exprs
-    in  Fix (ASTList (macroExpand . macroExpandWith macros <$> exprs))
-macroExpand (Fix expr) = Fix (macroExpand <$> expr)
+    in  Fix (ASTList (expandOnce . macroExpandWith macros <$> exprs))
+expandOnce expr
+    | isMacro expr = expr
+    | otherwise = Fix (expandOnce <$> unFix expr)
+    where isMacro = isJust . toMacro
 
 toMacro :: InfiniteAST -> Maybe Macro
 toMacro (Fix (ASTList [Fix (ASTIdentifier (Identifier "defmacro")), Fix (ASTIdentifier macroName), Fix (ASTList macroParams), macroBody])) = do
