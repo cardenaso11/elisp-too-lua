@@ -11,7 +11,14 @@
             }
           );
         };
+          dontTestOverlay = 
+            self: super: {
+              haskellPackages = super.haskellPackages.extend (innerSelf: innerSuper:
+                { generic-lens = super.haskell.lib.dontCheck innerSuper.generic-lens; }
+                );
+            };
+        
 
-      in [ projectsOverlay ];
+      in [ projectsOverlay dontTestOverlay ];
   };
 }

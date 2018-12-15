@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -9,6 +10,10 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module ElispParse.Common
     ( AST (..)
@@ -20,7 +25,6 @@ module ElispParse.Common
     , CompositeParser
     , Fix (..)
     , InfiniteAST
-    , InfiniteBackquotedAST
     , parseText
     , mfromMaybe
     , mfilter'
@@ -30,7 +34,23 @@ module ElispParse.Common
     , symbol
     , lexeme
     , parens
-    , brackets ) where
+    , brackets
+    , pattern FASTList
+    , pattern FASTQuote
+    , pattern FASTBackquote
+    , pattern FASTVector
+    , pattern FASTTable
+    , pattern FASTCons
+    , pattern FASTCharTable
+    , pattern FASTCharSubTable
+    , pattern FASTByteCode
+    , pattern FASTIdentifier
+    , pattern FASTIdentifier_
+    , pattern FASTFloat
+    , pattern FASTInt
+    , pattern FASTChar
+    , pattern FASTString
+    , pattern FASTBoolVector ) where
 import GHC.Generics
 import qualified Data.Text.Lazy as T
 import Data.Hashable
@@ -43,6 +63,7 @@ import Data.Char
 import Data.String
 import Data.Monoid
 import Data.Maybe
+import Control.Lens
 import qualified Data.Vector as V
 import qualified Data.ByteString as BS
 import qualified Data.Functor.Identity
@@ -71,16 +92,16 @@ data AST a = ASTList [a]
               | ASTVector (HashableVector a)
               | ASTTable [a]
               | ASTCons [a] a
-              | ASTIdentifier Identifier
               | ASTCharTable [a]
               | ASTCharSubTable [a]
+              | ASTByteCode [a] -- there really isnt much to do at parsing level
+              | ASTIdentifier Identifier
               | ASTFloat Double -- praying emacs people didnt do anything weird
               | ASTInt Int
               | ASTChar Char
               | ASTString T.Text
               | ASTBoolVector Int T.Text
-              | ASTByteCode [a] -- there really isnt much to do at parsing level
-    deriving (Eq, Generic, Functor)
+    deriving (Eq, Generic, Functor, Foldable, Traversable)
 
 -- | A backquoted AST node. Note its polymorphism in its coinduction:
 --   this allows us to guarantee in the types that once we leave the backquote
@@ -88,7 +109,7 @@ data AST a = ASTList [a]
 data BackquotedAST a = Quoted (AST (BackquotedAST a))
                      | Unquoted a
                      | Spliced (AST (BackquotedAST a))
-    deriving (Eq, Generic, Show, Hashable, Functor)
+    deriving (Eq, Generic, Show, Hashable, Functor, Foldable, Traversable)
 
 -- | Type level fixed-point combinator
 newtype Fix a = Fix { unFix :: a (Fix a) }
@@ -99,11 +120,19 @@ instance (Show (a (Fix a))) => Show (Fix a) where
   show (Fix a) = show a
 deriving newtype instance (Eq (a (Fix a))) => Eq (Fix a)
 deriving newtype instance (Hashable (a (Fix a))) => Hashable (Fix a)
+deriving newtype instance (Generic (a (Fix a))) => Generic (Fix a)
 
 -- | An AST node that is guaranteed to only contain other AST nodes, ending
 --   in one of the AST terminals (literals)
 type InfiniteAST = Fix AST
-type InfiniteBackquotedAST = Fix BackquotedAST
+
+instance (Wrapped (Fix a)) where
+  type Unwrapped (Fix a) = a (Fix a)
+  _Wrapped' = iso unFix Fix
+
+instance Rewrapped (Fix a) (Fix a)
+
+-- type family Iterate 
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
@@ -122,7 +151,7 @@ deriving instance Hashable a => Hashable (AST a)
 -- | A newtype for a Hashable Vector of Hashable elements.
 --   This exists to not have an orphaned instance.
 newtype HashableVector a = HashableVector (V.Vector a)
-  deriving (Eq, Functor)
+  deriving (Eq, Generic, Functor, Foldable, Traversable)
 instance forall a. Show a => Show (HashableVector a) where
   show (HashableVector v) = show v
 instance forall a. Hashable a => Hashable (HashableVector a) where
@@ -197,3 +226,21 @@ brackets :: MonadParsec e s m
   => Tokens s ~ T.Text
   => m a -> m a
 brackets = between (symbol "[") (symbol "]")
+
+-- pattern synonyms
+pattern FASTList x = Fix (ASTList x)
+pattern FASTQuote x = Fix (ASTQuote x)
+pattern FASTBackquote x = Fix (ASTBackquote x)
+pattern FASTVector x = Fix (ASTVector (HashableVector x))
+pattern FASTTable x = Fix (ASTTable x)
+pattern FASTCons xs x = Fix (ASTCons xs x)
+pattern FASTCharTable x = Fix (ASTCharTable x)
+pattern FASTCharSubTable x = Fix (ASTCharSubTable x)
+pattern FASTByteCode x = Fix (ASTByteCode x)
+pattern FASTIdentifier x = Fix (ASTIdentifier x)
+pattern FASTIdentifier_ x = Fix (ASTIdentifier (Identifier x))
+pattern FASTFloat x = Fix (ASTFloat x)
+pattern FASTInt x = Fix (ASTInt x)
+pattern FASTChar x = Fix (ASTChar x)
+pattern FASTString x = Fix (ASTString x)
+pattern FASTBoolVector x y = Fix (ASTBoolVector x y)

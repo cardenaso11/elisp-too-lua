@@ -45,6 +45,7 @@ library
     , hedgehog
     , hashable
     , lens
+    , generic-lens
     , megaparsec
     , text
     , unordered-containers
