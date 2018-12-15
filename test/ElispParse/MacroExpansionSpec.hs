@@ -13,114 +13,114 @@ import ElispParse.Common
 import ElispParse.MacroExpansion
 
 spec = do
-    let macroFoo = Macro (Identifier "foo") [Identifier "x", Identifier "y"] (fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")])
-        macroBar = Macro (Identifier "bar") [] (fASTInt 0)
+    let macroFoo = Macro (Identifier "foo") [Identifier "x", Identifier "y"] (FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "y"), FASTIdentifier (Identifier "x")])
+        macroBar = Macro (Identifier "bar") [] (FASTInt 0)
         macros = [macroFoo, macroBar]
     describe "macroExpandWith" $ do
         it "has no effect on expressions that don't contain a macro" $ do
-            macroExpandWith macros (fASTInt 1)
-                `shouldBe` (fASTInt 1)
+            macroExpandWith macros (FASTInt 1)
+                `shouldBe` (FASTInt 1)
         it "leaves unrelated identifiers alone" $ do
-            macroExpandWith macros (fASTList [fASTIdentifier (Identifier "goo"), fASTList [fASTIdentifier (Identifier "bar")]])
-                `shouldBe` (fASTList [fASTIdentifier (Identifier "goo"), fASTInt 0])
+            macroExpandWith macros (FASTList [FASTIdentifier (Identifier "goo"), FASTList [FASTIdentifier (Identifier "bar")]])
+                `shouldBe` (FASTList [FASTIdentifier (Identifier "goo"), FASTInt 0])
         it "expands macros" $ do
-            macroExpandWith macros (fASTList [fASTIdentifier (Identifier "foo"), fASTInt 2, fASTIdentifier (Identifier "a")])
-                `shouldBe` (fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "a"), fASTInt 2])
+            macroExpandWith macros (FASTList [FASTIdentifier (Identifier "foo"), FASTInt 2, FASTIdentifier (Identifier "a")])
+                `shouldBe` (FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "a"), FASTInt 2])
     
     describe "macroExpand" $ do
-        let original = (fASTList [
-                fASTList [
-                    fASTIdentifier (Identifier "defmacro")
-                  , fASTIdentifier (Identifier "foo")
-                  , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
-                  , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
+        let original = (FASTList [
+                FASTList [
+                    FASTIdentifier (Identifier "defmacro")
+                  , FASTIdentifier (Identifier "foo")
+                  , FASTList [FASTIdentifier (Identifier "x"), FASTIdentifier (Identifier "y")]
+                  , FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "y"), FASTIdentifier (Identifier "x")]
                   ]
-              , fASTList [
-                    fASTIdentifier (Identifier "foo")
-                  , fASTList [fASTIdentifier (Identifier "a")]
-                  , fASTList [fASTIdentifier (Identifier "b")]
+              , FASTList [
+                    FASTIdentifier (Identifier "foo")
+                  , FASTList [FASTIdentifier (Identifier "a")]
+                  , FASTList [FASTIdentifier (Identifier "b")]
                   ]
               ])
-            expected = (fASTList [
-                fASTList [
-                    fASTIdentifier (Identifier "defmacro")
-                  , fASTIdentifier (Identifier "foo")
-                  , fASTList [fASTIdentifier (Identifier "x"), fASTIdentifier (Identifier "y")]
-                  , fASTList [fASTIdentifier (Identifier "+"), fASTIdentifier (Identifier "y"), fASTIdentifier (Identifier "x")]
+            expected = (FASTList [
+                FASTList [
+                    FASTIdentifier (Identifier "defmacro")
+                  , FASTIdentifier (Identifier "foo")
+                  , FASTList [FASTIdentifier (Identifier "x"), FASTIdentifier (Identifier "y")]
+                  , FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "y"), FASTIdentifier (Identifier "x")]
                   ]
-              , fASTList [
-                    fASTIdentifier (Identifier "+")
-                  , fASTList [fASTIdentifier (Identifier "b")]
-                  , fASTList [fASTIdentifier (Identifier "a")]
+              , FASTList [
+                    FASTIdentifier (Identifier "+")
+                  , FASTList [FASTIdentifier (Identifier "b")]
+                  , FASTList [FASTIdentifier (Identifier "a")]
                   ]
               ])
         it "locates and expands macros" $ do
             macroExpand original `shouldBe` expected
 
         it "locates and expands nested macros" $ do
-            macroExpand (fASTList [original]) `shouldBe` (fASTList [expected])
+            macroExpand (FASTList [original]) `shouldBe` (FASTList [expected])
 
         it "fully expands expressions requiring repeated expansion" $ do
-            let original = fASTList [
-                    fASTList [
-                        fASTIdentifier (Identifier "defmacro")
-                      , fASTIdentifier (Identifier "f")
-                      , fASTList [fASTIdentifier (Identifier "n")]
-                      , fASTList [
-                            fASTIdentifier (Identifier "*")
-                          , fASTIdentifier (Identifier "n")
-                          , fASTList [
-                                fASTIdentifier (Identifier "g")
-                              , fASTIdentifier (Identifier "n")
+            let original = FASTList [
+                    FASTList [
+                        FASTIdentifier (Identifier "defmacro")
+                      , FASTIdentifier (Identifier "f")
+                      , FASTList [FASTIdentifier (Identifier "n")]
+                      , FASTList [
+                            FASTIdentifier (Identifier "*")
+                          , FASTIdentifier (Identifier "n")
+                          , FASTList [
+                                FASTIdentifier (Identifier "g")
+                              , FASTIdentifier (Identifier "n")
                               ]
                           ]
                       ]
-                  , fASTList [
-                        fASTIdentifier (Identifier "defmacro")
-                      , fASTIdentifier (Identifier "g")
-                      , fASTList [fASTIdentifier (Identifier "n")]
-                      , fASTList [
-                            fASTIdentifier (Identifier "+")
-                          , fASTIdentifier (Identifier "n")
-                          , fASTIdentifier (Identifier "1")
+                  , FASTList [
+                        FASTIdentifier (Identifier "defmacro")
+                      , FASTIdentifier (Identifier "g")
+                      , FASTList [FASTIdentifier (Identifier "n")]
+                      , FASTList [
+                            FASTIdentifier (Identifier "+")
+                          , FASTIdentifier (Identifier "n")
+                          , FASTIdentifier (Identifier "1")
                           ]
                       ]
-                  , fASTList [
-                        fASTIdentifier (Identifier "f")
-                      , fASTIdentifier (Identifier "1")
+                  , FASTList [
+                        FASTIdentifier (Identifier "f")
+                      , FASTIdentifier (Identifier "1")
                       ]
                   ]
-            let expected = fASTList [
-                    fASTList [
-                        fASTIdentifier (Identifier "defmacro")
-                      , fASTIdentifier (Identifier "f")
-                      , fASTList [fASTIdentifier (Identifier "n")]
-                      , fASTList [
-                            fASTIdentifier (Identifier "*")
-                          , fASTIdentifier (Identifier "n")
-                          , fASTList [
-                                fASTIdentifier (Identifier "g")
-                              , fASTIdentifier (Identifier "n")
+            let expected = FASTList [
+                    FASTList [
+                        FASTIdentifier (Identifier "defmacro")
+                      , FASTIdentifier (Identifier "f")
+                      , FASTList [FASTIdentifier (Identifier "n")]
+                      , FASTList [
+                            FASTIdentifier (Identifier "*")
+                          , FASTIdentifier (Identifier "n")
+                          , FASTList [
+                                FASTIdentifier (Identifier "g")
+                              , FASTIdentifier (Identifier "n")
                               ]
                           ]
                       ]
-                  , fASTList [
-                        fASTIdentifier (Identifier "defmacro")
-                      , fASTIdentifier (Identifier "g")
-                      , fASTList [fASTIdentifier (Identifier "n")]
-                      , fASTList [
-                            fASTIdentifier (Identifier "+")
-                          , fASTIdentifier (Identifier "n")
-                          , fASTIdentifier (Identifier "1")
+                  , FASTList [
+                        FASTIdentifier (Identifier "defmacro")
+                      , FASTIdentifier (Identifier "g")
+                      , FASTList [FASTIdentifier (Identifier "n")]
+                      , FASTList [
+                            FASTIdentifier (Identifier "+")
+                          , FASTIdentifier (Identifier "n")
+                          , FASTIdentifier (Identifier "1")
                           ]
                       ]
-                  , fASTList [
-                        fASTIdentifier (Identifier "*")
-                      , fASTIdentifier (Identifier "1")
-                      , fASTList [
-                            fASTIdentifier (Identifier "+")
-                          , fASTIdentifier (Identifier "1")
-                          , fASTIdentifier (Identifier "1")
+                  , FASTList [
+                        FASTIdentifier (Identifier "*")
+                      , FASTIdentifier (Identifier "1")
+                      , FASTList [
+                            FASTIdentifier (Identifier "+")
+                          , FASTIdentifier (Identifier "1")
+                          , FASTIdentifier (Identifier "1")
                           ]
                       ]
                   ]

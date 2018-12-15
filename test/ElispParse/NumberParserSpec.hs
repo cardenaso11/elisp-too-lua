@@ -21,12 +21,12 @@ spec = do
         it "parses an arbitrary radix elisp int" $ do
             let runParseInt = parseText (Fix <$> parseInt)
 
-            runParseInt "1" `shouldParse'` fASTInt 1
-            runParseInt "+1" `shouldParse'` fASTInt 1
-            runParseInt "-1" `shouldParse'` fASTInt (-1)
+            runParseInt "1" `shouldParse'` FASTInt 1
+            runParseInt "+1" `shouldParse'` FASTInt 1
+            runParseInt "-1" `shouldParse'` FASTInt (-1)
             runParseInt `shouldFailOn` "INF"
 
-            let fourtyfour = fASTInt 44
+            let fourtyfour = FASTInt 44
             runParseInt "#b101100" `shouldParse'` fourtyfour
             runParseInt "#o54" `shouldParse'` fourtyfour
             runParseInt "#x2c" `shouldParse'` fourtyfour
@@ -38,10 +38,10 @@ spec = do
         it "parses an elisp float" $ do
             let runParseFloat = parseText (Fix <$> parseFloat)
 
-            runParseFloat "1.2" `shouldParse'` fASTFloat 1.2
-            runParseFloat ".2" `shouldParse'` fASTFloat 0.2
+            runParseFloat "1.2" `shouldParse'` FASTFloat 1.2
+            runParseFloat ".2" `shouldParse'` FASTFloat 0.2
 
-            let fifteenHundred = fASTFloat 1500.0
+            let fifteenHundred = FASTFloat 1500.0
             runParseFloat "1500.0" `shouldParse'` fifteenHundred
             runParseFloat "+15e2" `shouldParse'` fifteenHundred
             runParseFloat "15.0e+2" `shouldParse'` fifteenHundred

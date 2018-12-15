@@ -25,69 +25,69 @@ spec = do
     describe "parseProgram" $ do
         let runParseExprFP = parseText exprFP
 
-        let oneTwoThree = (fASTInt <$> [1,2,3]) in do
+        let oneTwoThree = (FASTInt <$> [1,2,3]) in do
             it "parses quoted expressions" $ do
                 shouldParse' (runParseExprFP
                     "'(1 2 3)")
-                    (fASTQuote . fASTList $ oneTwoThree)
+                    (FASTQuote . FASTList $ oneTwoThree)
                 shouldParse' (runParseExprFP
                     "'(a b c)")
-                    (fASTQuote . fASTList $ fASTIdentifier . Identifier <$> ["a","b","c"])
+                    (FASTQuote . FASTList $ FASTIdentifier . Identifier <$> ["a","b","c"])
                 shouldParse' (runParseExprFP
                      "'a")
-                     (fASTQuote . fASTIdentifier . Identifier $ "a")
+                     (FASTQuote . FASTIdentifier . Identifier $ "a")
             it "parses nested quoted expressions" $ do
                 shouldParse' (runParseExprFP
                     "'( '(1 2 3) '(1 2 3) '(1 2 3))")
-                    (fASTQuote . fASTList $ replicate 3 (fASTQuote . fASTList $ oneTwoThree))
+                    (FASTQuote . FASTList $ replicate 3 (FASTQuote . FASTList $ oneTwoThree))
                 shouldParse (runParseExprFP
                     "'( (1 2 3) (1 2 3) (1 2 3))")
-                    (fASTQuote . fASTList $ replicate 3 (fASTList oneTwoThree))
+                    (FASTQuote . FASTList $ replicate 3 (FASTList oneTwoThree))
 
-        let fourFiveSix = fASTInt <$> [4,5,6] in do
+        let fourFiveSix = FASTInt <$> [4,5,6] in do
             it "parses lists of expressions" $ do
                 shouldParse' (runParseExprFP
                     "(4 5 6)")
-                    (fASTList fourFiveSix)
+                    (FASTList fourFiveSix)
             it "parses nested lists of expressions" $ do
                 shouldParse' (runParseExprFP
                     "(   (4 5 6) (4 5 6) (4 5 6) )")
-                    (fASTList $ replicate 3 (fASTList fourFiveSix))
+                    (FASTList $ replicate 3 (FASTList fourFiveSix))
 
         do
             it "parses backquoted expressions" $ do
                 shouldParse' (runParseExprFP
                     "`(1 ,2 3)")
-                    (fASTBackquote . Quoted . ASTList $
+                    (FASTBackquote . Quoted . ASTList $
                          [ Quoted (ASTInt 1)
-                         , Unquoted (fASTInt 2)
+                         , Unquoted (FASTInt 2)
                          , Quoted (ASTInt 3)
                          ])
 
             it "parses backquoted expressions containing identifiers" $ do
                 shouldParse' (runParseExprFP
                     "`(1 ,2 abc)")
-                    (fASTBackquote . Quoted . ASTList $
+                    (FASTBackquote . Quoted . ASTList $
                          [ Quoted (ASTInt 1)
-                         , Unquoted (fASTInt 2)
+                         , Unquoted (FASTInt 2)
                          , Quoted (ASTIdentifier (Identifier "abc"))
                          ])
 
             it "parses deeply nested backquoted expressions" $ do
                 shouldParse' (runParseExprFP
                     "`(1 ,(+ 2 3) 4)")
-                    (fASTBackquote . Quoted . ASTList $
+                    (FASTBackquote . Quoted . ASTList $
                         [ Quoted (ASTInt 1)
-                        , Unquoted (fASTList
-                            [ fASTIdentifier (Identifier "+")
-                            , fASTInt 2
-                            , fASTInt 3
+                        , Unquoted (FASTList
+                            [ FASTIdentifier (Identifier "+")
+                            , FASTInt 2
+                            , FASTInt 3
                             ])
                         , Quoted (ASTInt 4)
                         ])
 
-        let emptyVector = fASTVector (HashableVector V.empty)
-            zeroOneTwo = fASTVector (HashableVector (V.generate 3 fASTInt)) in do
+        let emptyVector = FASTVector V.empty
+            zeroOneTwo = FASTVector (V.generate 3 FASTInt) in do
             it "parses the empty vector" $ do
                 shouldParse' (runParseExprFP
                     "[]")
@@ -97,8 +97,8 @@ spec = do
                     "[0 1 2]")
                     zeroOneTwo
 
-        let hashConstructor = fASTIdentifier (Identifier "hash-table")
-            table = fASTTable (hashConstructor : map fASTInt [1, 10, 2, 20]) in do
+        let hashConstructor = FASTIdentifier (Identifier "hash-table")
+            table = FASTTable (hashConstructor : map FASTInt [1, 10, 2, 20]) in do
             it "parses tables" $ do
                 shouldParse' (runParseExprFP
                     "#s(hash-table 1 10 2 20)")
@@ -108,13 +108,13 @@ spec = do
             it "parses identifiers" $ do
                 shouldParse' (runParseExprFP
                     "garfield")
-                    (fASTIdentifier (Identifier "garfield"))
+                    (FASTIdentifier (Identifier "garfield"))
 
-        let a = fASTChar 'a'
-            b = fASTChar 'b'
-            c = fASTChar 'c'
-            newlnC = fASTChar '\n'
-            tabC = fASTChar '\t' in do
+        let a = FASTChar 'a'
+            b = FASTChar 'b'
+            c = FASTChar 'c'
+            newlnC = FASTChar '\n'
+            tabC = FASTChar '\t' in do
             it "parses character literals" $ do
                 shouldParse' (runParseExprFP
                     "?a")
@@ -166,52 +166,52 @@ spec = do
                 it "parses string literals" $ do
                     shouldParse' (runParseExprFP $
                         quote owo)
-                        (fASTString owo)
+                        (FASTString owo)
                     shouldParse' (runParseExprFP $
                         quote string2)
-                        (fASTString . escape . quote $ string2)
+                        (FASTString . escape . quote $ string2)
                     shouldParse' (runParseExprFP $
                         quote eee)
-                        (fASTString . escape . quote $ eee)
+                        (FASTString . escape . quote $ eee)
 
         it "parses escaped string literals" $ do
             shouldParse' (runParseExprFP
                 [r|"\n"|])
-                (fASTString "\n")
+                (FASTString "\n")
             shouldParse' (runParseExprFP
                 [r|"\t"|])
-                (fASTString "\t")
+                (FASTString "\t")
 
 
-        let d = fASTIdentifier $ Identifier "d"
-            one = fASTInt 1
-            two = fASTInt 2 in do
+        let d = FASTIdentifier $ Identifier "d"
+            one = FASTInt 1
+            two = FASTInt 2 in do
             it "parses individual cons cells" $ do
                 shouldParse' (runParseExprFP
                     "(1 . 2)")
-                    (fASTCons [one] two)
+                    (FASTCons [one] two)
 
             it "parses improper lists as cons cells" $ do
                 shouldParse' (runParseExprFP
                     "(1 d . 2)")
-                    (fASTCons [one, d] two)
+                    (FASTCons [one, d] two)
 
             it "parses character tables" $ do
                 shouldParse' (runParseExprFP
                     "#^[1 2 d]")
-                    (fASTCharTable [one, two, d])
+                    (FASTCharTable [one, two, d])
 
             it "parses character subtables" $ do
                 shouldParse' (runParseExprFP
                     "#^^[d 2 1]")
-                    (fASTCharSubTable [d, two, one])
+                    (FASTCharSubTable [d, two, one])
 
         it "parses boolvector" $ do
             shouldParse' (runParseExprFP
                 [r|#&4"hewwo"|])
-                (fASTBoolVector 4 "hewwo")
+                (FASTBoolVector 4 "hewwo")
 
         it "parses bytecode" $ do
             shouldParse' (runParseExprFP
                 "#[1 2 3 4]")
-                (fASTByteCode $ fASTInt <$> [1, 2, 3, 4])
+                (FASTByteCode $ FASTInt <$> [1, 2, 3, 4])
