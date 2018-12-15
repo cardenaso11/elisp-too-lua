@@ -24,7 +24,11 @@ import qualified Data.Text as T
 
 import ElispParse.Common
 
-data Macro = Macro { name :: Identifier, params :: [Identifier], result :: InfiniteAST } deriving (Show, Generic)
+data Macro = Macro
+  { name :: Identifier
+  , params :: [Identifier]
+  , result :: InfiniteAST
+  } deriving (Show, Generic)
 
 macroExpandWith :: [Macro] -> InfiniteAST -> InfiniteAST
 macroExpandWith macros expr@(FASTList (x:xs))
