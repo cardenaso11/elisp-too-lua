@@ -9,4 +9,5 @@ add-source-timestamps
 *-index.tar
 .cabal-sandbox/
 cabal.sandbox.config
+cabal.project.local
 .vscode/
