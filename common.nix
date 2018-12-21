@@ -5,7 +5,7 @@
     overlays =
       let projectsOverlay =
         self: super: {
-          haskellPackages = super.haskellPackages.extend (
+          haskellPackages = super.haskell.packages.ghc862.extend (
             super.haskell.lib.packageSourceOverrides {
               elisp-too-lua = ./.;
             }
