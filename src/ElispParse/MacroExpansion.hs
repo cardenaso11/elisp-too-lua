@@ -6,21 +6,29 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeApplications#-}
 {-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE GADTs #-}
 
 module ElispParse.MacroExpansion (
     Macro(..)
   , macroExpand
+  , macroExpandOnce
   , macroExpandWith
+  , macroExpandOnceWith
 ) where
 
 import Data.List (find)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Map as M
 import Data.Maybe
+import Data.Bool
+import Data.Data.Lens
+import Control.Monad
 import Control.Lens
-import GHC.Generics
+import qualified GHC.Generics as G
 import Data.Generics.Product
 import Data.Generics.Sum
 
-import qualified Data.Text as T
+import qualified Data.Text.Lazy as T
 
 import ElispParse.Common
 
@@ -28,40 +36,44 @@ data Macro = Macro
   { name :: Identifier
   , params :: [Identifier]
   , result :: InfiniteAST
-  } deriving (Show, Generic)
+  } deriving (Show, G.Generic)
+
+untilStable :: forall a. Eq a => (a -> a) -> a -> a
+untilStable f x =
+    let seed = (x, f x)
+        step (_, b) = (b, f b)
+    in  fst $ until (uncurry (==)) step seed
 
 macroExpandWith :: [Macro] -> InfiniteAST -> InfiniteAST
-macroExpandWith macros expr@(FASTList (x:xs))
-    | isJust (toMacro expr) = expr
-    | FASTIdentifier ident <- x, Just macro <- find ((==ident).name) macros =
-        subst macro xs
-    | otherwise =
-        FASTList (macroExpandWith macros <$> (x:xs))
-macroExpandWith macros (Fix expr) = Fix (macroExpandWith macros <$> expr)
+macroExpandWith macros inputAST = untilStable (macroExpandOnceWith macros) inputAST
 
-subst :: Macro -> [InfiniteAST] -> InfiniteAST
-subst macro args =
-    let argMap = zip (params macro) args
-    in  go argMap (result macro)
-    where
-        go argMap i@(FASTIdentifier ident) = fromMaybe i $ lookup ident argMap
-        go argMap (Fix expr) = Fix (go argMap <$> expr)
+-- expand macros once
+macroExpandOnceWith :: [Macro] -> InfiniteAST -> InfiniteAST
+macroExpandOnceWith macros inputAST =
+  let ignoringMacros = plate . (sets $ \f x -> maybe (f x) id (x <$ toMacro x))
+  in  foldr (\macro -> transformOn ignoringMacros (subst macro)) inputAST macros
 
--- | Find macro definitions in the AST and expand their use sites.
+-- FIXME: this should return maybe so we can indicate wrong # of args
+subst :: Macro -> InfiniteAST -> InfiniteAST
+subst macro inputAST = fromMaybe inputAST $
+  (inputAST) ^? _Wrapped . _Ctor @"ASTList"
+  & mfilter (\target -> length target == 1 + length (params $ macro)
+              && listToMaybe target == Just (FASTIdentifier $ name macro))
+  <&> \target ->
+  let subs = M.fromList $ zip (params macro) (drop 1 target)
+      applySub query = fromMaybe query $
+        (query ^? _Wrapped . _Ctor @"ASTIdentifier")
+        >>= (\i -> subs ^. at i)
+  in  transform applySub (result macro)
+
+-- | Find top-level macro definitions in the AST and expand their use sites.
 macroExpand :: InfiniteAST -> InfiniteAST
-macroExpand ex =
-    let seed = (ex, expandOnce ex)
-        step (a, b) = (b, expandOnce b)
-    in  fst (until (uncurry (==)) step seed)
+macroExpand inputAST = untilStable macroExpandOnce inputAST
 
-expandOnce :: InfiniteAST -> InfiniteAST
-expandOnce (FASTList exprs) =
-    let macros = mapMaybe toMacro exprs
-    in  FASTList (expandOnce . macroExpandWith macros <$> exprs)
-expandOnce expr
-    | isMacro expr = expr
-    | otherwise = Fix (expandOnce <$> unFix expr)
-    where isMacro = isJust . toMacro
+macroExpandOnce :: InfiniteAST -> InfiniteAST
+macroExpandOnce inputAST =
+  let macros = inputAST ^.. plate . (to toMacro . _Just)
+  in  macroExpandOnceWith macros inputAST
 
 toMacro :: InfiniteAST -> Maybe Macro
 toMacro x = do

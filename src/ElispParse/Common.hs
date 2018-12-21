@@ -14,6 +14,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module ElispParse.Common
     ( AST (..)
@@ -63,7 +64,11 @@ import Data.Char
 import Data.String
 import Data.Monoid
 import Data.Maybe
+import Data.Typeable
+import Data.Data
+import Data.Data.Lens
 import Control.Lens
+import Control.Lens.Plated
 import qualified Data.Vector as V
 import qualified Data.ByteString as BS
 import qualified Data.Functor.Identity
@@ -101,7 +106,7 @@ data AST a = ASTList [a]
               | ASTChar Char
               | ASTString T.Text
               | ASTBoolVector Int T.Text
-    deriving (Eq, Generic, Functor, Foldable, Traversable)
+    deriving (Eq, Generic, Functor, Foldable, Traversable, Typeable, Data)
 
 -- | A backquoted AST node. Note its polymorphism in its coinduction:
 --   this allows us to guarantee in the types that once we leave the backquote
@@ -109,7 +114,7 @@ data AST a = ASTList [a]
 data BackquotedAST a = Quoted (AST (BackquotedAST a))
                      | Unquoted a
                      | Spliced (AST (BackquotedAST a))
-    deriving (Eq, Generic, Show, Hashable, Functor, Foldable, Traversable)
+    deriving (Eq, Generic, Show, Hashable, Functor, Foldable, Traversable, Typeable, Data)
 
 -- | Type level fixed-point combinator
 newtype Fix a = Fix { unFix :: a (Fix a) }
@@ -121,6 +126,8 @@ instance (Show (a (Fix a))) => Show (Fix a) where
 deriving newtype instance (Eq (a (Fix a))) => Eq (Fix a)
 deriving newtype instance (Hashable (a (Fix a))) => Hashable (Fix a)
 deriving newtype instance (Generic (a (Fix a))) => Generic (Fix a)
+deriving instance (Typeable (a (Fix a))) => Typeable (Fix a)
+deriving instance (Typeable a, Data (a (Fix a))) => Data (Fix a)
 
 -- | An AST node that is guaranteed to only contain other AST nodes, ending
 --   in one of the AST terminals (literals)
@@ -132,7 +139,7 @@ instance (Wrapped (Fix a)) where
 
 instance Rewrapped (Fix a) (Fix a)
 
--- type family Iterate 
+instance Plated InfiniteAST
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
@@ -151,7 +158,7 @@ deriving instance Hashable a => Hashable (AST a)
 -- | A newtype for a Hashable Vector of Hashable elements.
 --   This exists to not have an orphaned instance.
 newtype HashableVector a = HashableVector (V.Vector a)
-  deriving (Eq, Generic, Functor, Foldable, Traversable)
+  deriving (Eq, Generic, Functor, Foldable, Traversable, Typeable, Data)
 instance forall a. Show a => Show (HashableVector a) where
   show (HashableVector v) = show v
 instance forall a. Hashable a => Hashable (HashableVector a) where
@@ -159,7 +166,7 @@ instance forall a. Hashable a => Hashable (HashableVector a) where
 
 -- | An elisp identifier
 newtype Identifier = Identifier T.Text
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Show, Ord, Generic, Typeable, Data)
 
 deriving anyclass instance Hashable Identifier
 
