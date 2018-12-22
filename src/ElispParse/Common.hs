@@ -15,6 +15,10 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module ElispParse.Common
     ( AST (..)
@@ -36,6 +40,9 @@ module ElispParse.Common
     , lexeme
     , parens
     , brackets
+    , _FASTList
+    , _FASTIdentifier
+    , _FASTIdentifier_
     , pattern FASTList
     , pattern FASTQuote
     , pattern FASTBackquote
@@ -53,6 +60,8 @@ module ElispParse.Common
     , pattern FASTString
     , pattern FASTBoolVector ) where
 import GHC.Generics
+import Data.Generics.Product
+import Data.Generics.Sum
 import qualified Data.Text.Lazy as T
 import Data.Hashable
 import qualified Data.HashMap.Strict as HM
@@ -170,6 +179,10 @@ newtype Identifier = Identifier T.Text
 
 deriving anyclass instance Hashable Identifier
 
+instance Rewrapped Identifier Identifier
+instance Wrapped Identifier where
+  type Unwrapped Identifier = T.Text
+
 -- | Parse some text into an AST value or an error
 parseText :: forall a.
     Parser a
@@ -233,6 +246,17 @@ brackets :: MonadParsec e s m
   => Tokens s ~ T.Text
   => m a -> m a
 brackets = between (symbol "[") (symbol "]")
+
+-- lens
+_FASTList :: Prism' InfiniteAST [InfiniteAST]
+_FASTList = _Wrapped . _Ctor @"ASTList"
+
+_FASTIdentifier :: Prism' InfiniteAST Identifier
+_FASTIdentifier = _Wrapped . _Ctor @"ASTIdentifier"
+
+_FASTIdentifier_ :: Prism' InfiniteAST T.Text
+_FASTIdentifier_ = _Wrapped . _Ctor @"ASTIdentifier" . _Wrapped
+-- remind me to add the rest of these later
 
 -- pattern synonyms
 pattern FASTList x = Fix (ASTList x)

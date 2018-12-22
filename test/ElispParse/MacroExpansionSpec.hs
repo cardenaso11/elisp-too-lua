@@ -19,13 +19,13 @@ spec = do
     describe "macroExpandWith" $ do
         it "has no effect on expressions that don't contain a macro" $ do
             macroExpandWith macros (FASTInt 1)
-                `shouldBe` (FASTInt 1)
+                `shouldBe` Just (FASTInt 1)
         it "leaves unrelated identifiers alone" $ do
             macroExpandWith macros (FASTList [FASTIdentifier (Identifier "goo"), FASTList [FASTIdentifier (Identifier "bar")]])
-                `shouldBe` (FASTList [FASTIdentifier (Identifier "goo"), FASTInt 0])
+                `shouldBe` Just (FASTList [FASTIdentifier (Identifier "goo"), FASTInt 0])
         it "expands macros" $ do
             macroExpandWith macros (FASTList [FASTList [FASTIdentifier (Identifier "foo"), FASTInt 2, FASTIdentifier (Identifier "a")]])
-                `shouldBe` (FASTList [FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "a"), FASTInt 2]])
+                `shouldBe` Just (FASTList [FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "a"), FASTInt 2]])
     
     describe "macroExpand" $ do
         let original = (FASTList [
@@ -55,10 +55,10 @@ spec = do
                   ]
               ])
         it "locates and expands macros" $ do
-            macroExpand original `shouldBe` expected
+            macroExpand original `shouldBe` Just expected
 
         it "shouldn't find nested macro definitions" $ do
-            macroExpand (FASTList [original]) `shouldBe` (FASTList [original])
+            macroExpand (FASTList [original]) `shouldBe` Just (FASTList [original])
 
         it "fully expands expressions requiring repeated expansion" $ do
             let original = FASTList [
@@ -124,4 +124,4 @@ spec = do
                           ]
                       ]
                   ]
-            macroExpand original `shouldBe` expected
+            macroExpand original `shouldBe` Just expected

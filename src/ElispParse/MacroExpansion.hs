@@ -17,6 +17,7 @@ module ElispParse.MacroExpansion (
 ) where
 
 import Data.List (find)
+import Data.Foldable
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import Data.Maybe
@@ -32,6 +33,8 @@ import qualified Data.Text.Lazy as T
 
 import ElispParse.Common
 
+import Debug.Trace
+
 data Macro = Macro
   { name :: Identifier
   , params :: [Identifier]
@@ -44,33 +47,53 @@ untilStable f x =
         step (_, b) = (b, f b)
     in  fst $ until (uncurry (==)) step seed
 
-macroExpandWith :: [Macro] -> InfiniteAST -> InfiniteAST
-macroExpandWith macros inputAST = untilStable (macroExpandOnceWith macros) inputAST
+macroExpandWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
+macroExpandWith macros inputAST =
+  untilStable (macroExpandOnceWith macros =<< ) $ Just inputAST
 
 -- expand macros once
-macroExpandOnceWith :: [Macro] -> InfiniteAST -> InfiniteAST
+macroExpandOnceWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
 macroExpandOnceWith macros inputAST =
-  let ignoringMacros = plate . (sets $ \f x -> maybe (f x) id (x <$ toMacro x))
-  in  foldr (\macro -> transformOn ignoringMacros (subst macro)) inputAST macros
+  let ignoringMacros' = plate . filtered (isNothing . toMacro)
+      -- TODO: i think this isnt a legal traversal,,, if possible, try to make one
+  in  foldrM (\m -> transformMOn ignoringMacros' (subst m)) inputAST macros
 
--- FIXME: this should return maybe so we can indicate wrong # of args
-subst :: Macro -> InfiniteAST -> InfiniteAST
-subst macro inputAST = fromMaybe inputAST $
-  (inputAST) ^? _Wrapped . _Ctor @"ASTList"
-  & mfilter (\target -> length target == 1 + length (params $ macro)
-              && listToMaybe target == Just (FASTIdentifier $ name macro))
-  <&> \target ->
-  let subs = M.fromList $ zip (params macro) (drop 1 target)
-      applySub query = fromMaybe query $
-        (query ^? _Wrapped . _Ctor @"ASTIdentifier")
-        >>= (\i -> subs ^. at i)
-  in  transform applySub (result macro)
+subst :: Macro -> InfiniteAST -> Maybe InfiniteAST
+subst macro inputAST = --trace ("-- SUBST CALLED WITH: macro=" ++ show macro ++ ",inputAST=" ++ show inputAST ++ ",outputAST=" ++ show outputAST ++ " --") $
+  if isNothing macroCalled
+  then Just inputAST
+  else
+    if isCorrectArity
+    then outputAST
+    else Nothing
+  where
+    possiblyTarget = inputAST ^? _FASTList
+    macroCalled = possiblyTarget >>=
+      (\target -> target ^? ix 0 & mfilter (== FASTIdentifier (name macro)))
+         --listToMaybe target == Just (FASTIdentifier $ name macro))
+    isCorrectArity = maybe False
+      (\target -> length target == 1 + length (params $ macro))
+      possiblyTarget
+
+    outputAST = possiblyTarget <&> \target ->
+        let substitutions = M.fromList $ zip (params macro) (drop 1 target)
+            applySub query = fromMaybe query $
+              query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
+            -- applySub' :: InfiniteAST -> Maybe InfiniteAST
+            -- applySub' query = maybe (Just query) (\i -> substitutions ^. at i)
+            --   (query ^? _FASTIdentifier)
+        in  transform applySub (result macro)
+
+      -- & mfilter $ \thing -> undefined
+
+      --(\target -> length target == 1 + length (params $ macro)
+      --            && listToMaybe target == Just (FASTIdentifier $ name macro))
 
 -- | Find top-level macro definitions in the AST and expand their use sites.
-macroExpand :: InfiniteAST -> InfiniteAST
-macroExpand inputAST = untilStable macroExpandOnce inputAST
+macroExpand :: InfiniteAST -> Maybe InfiniteAST
+macroExpand inputAST = untilStable (macroExpandOnce =<<) $ Just inputAST
 
-macroExpandOnce :: InfiniteAST -> InfiniteAST
+macroExpandOnce :: InfiniteAST -> Maybe InfiniteAST
 macroExpandOnce inputAST =
   let macros = inputAST ^.. plate . (to toMacro . _Just)
   in  macroExpandOnceWith macros inputAST
