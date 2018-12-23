@@ -21,8 +21,6 @@ import Data.Foldable
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import Data.Maybe
-import Data.Bool
-import Data.Data.Lens
 import Control.Monad
 import Control.Lens
 import qualified GHC.Generics as G
@@ -32,8 +30,6 @@ import Data.Generics.Sum
 import qualified Data.Text.Lazy as T
 
 import ElispParse.Common
-
-import Debug.Trace
 
 data Macro = Macro
   { name :: Identifier
@@ -56,23 +52,20 @@ macroExpandOnceWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
 macroExpandOnceWith macros inputAST =
   let ignoringMacros' = plate . filtered (isNothing . toMacro)
       -- TODO: i think this isnt a legal traversal,,, if possible, try to make one
-  in  foldrM (\m -> transformMOn ignoringMacros' (subst m)) inputAST macros
+  in  foldrM (transformMOn ignoringMacros' . subst) inputAST macros
 
 subst :: Macro -> InfiniteAST -> Maybe InfiniteAST
-subst macro inputAST =
-  if not isMacroCall
-  then Just inputAST
-  else
-    if isCorrectArity
-    then outputAST
-    else Nothing
+subst macro inputAST
+  | not isMacroCall = Just inputAST
+  | isCorrectArity = outputAST
+  | otherwise = Nothing
   where
     possiblyTarget = inputAST ^? _FASTList
     isMacroCall = maybe False
       (\target -> target == FASTIdentifier (name macro))
       (possiblyTarget ^? _Just . ix 0)
     isCorrectArity = maybe False
-      (\target -> length target == 1 + length (params $ macro))
+      (\target -> length target == 1 + length (params macro))
       possiblyTarget
 
     outputAST = possiblyTarget <&> \target ->
@@ -81,7 +74,6 @@ subst macro inputAST =
               query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
         in  transform applySub (result macro)
 
--- | Find top-level macro definitions in the AST and expand their use sites.
 macroExpand :: InfiniteAST -> Maybe InfiniteAST
 macroExpand inputAST = untilStable (macroExpandOnce =<<) $ Just inputAST
 
