@@ -4,7 +4,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeApplications#-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE GADTs #-}
 
@@ -86,11 +85,11 @@ macroExpandOnce inputAST =
 
 toMacro :: InfiniteAST -> Maybe Macro
 toMacro x = do
-  form <- x ^? _Wrapped . _Ctor @"ASTList"
-  form ^? ix 0 . _Wrapped . _Ctor @"ASTIdentifier" . only (Identifier "defmacro")
-  macroName <- form ^? ix 1 . _Wrapped . _Ctor @"ASTIdentifier"
-  macroParams <- form ^? ix 2 . _Wrapped . _Ctor @"ASTList"
-    >>= traverse toIdentifier
+  form <- x ^? _FASTList
+  form ^? ix 0 . _FASTIdentifier_ . only "defmacro"
+  macroName <- form ^? ix 1 . _FASTIdentifier
+  macroParams <- form ^? ix 2 . _FASTList
+                 >>= traverse (preview _FASTIdentifier)
   macroBody <- form ^? ix 3
 
   --FIXME: traverse to error on non identifiers is incorrect because of &rest
@@ -100,6 +99,3 @@ toMacro x = do
   -- this is why we're not using pattern matching, if you're wondering
 
   pure $ Macro macroName macroParams macroBody
-
-toIdentifier :: InfiniteAST -> Maybe Identifier
-toIdentifier x = x ^? _Wrapped._Ctor @"ASTIdentifier"
