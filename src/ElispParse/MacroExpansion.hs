@@ -1,11 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE ExplicitForAll #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module ElispParse.MacroExpansion (
     Macro(..)
@@ -16,8 +15,6 @@ module ElispParse.MacroExpansion (
 ) where
 
 import Data.List (find)
-import Data.Foldable
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import Data.Maybe
 import Control.Monad
@@ -25,7 +22,6 @@ import Control.Lens
 import qualified GHC.Generics as G
 import Data.Generics.Product
 import Data.Generics.Sum
-
 import qualified Data.Text.Lazy as T
 
 import ElispParse.Common
@@ -37,10 +33,9 @@ data Macro = Macro
   } deriving (Show, G.Generic)
 
 untilStable :: forall a. Eq a => (a -> a) -> a -> a
-untilStable f x =
-    let seed = (x, f x)
+untilStable f x = fst $ until (uncurry (==)) step seed
+  where seed = (x, f x)
         step (_, b) = (b, f b)
-    in  fst $ until (uncurry (==)) step seed
 
 macroExpandWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
 macroExpandWith macros inputAST =
@@ -48,40 +43,37 @@ macroExpandWith macros inputAST =
 
 -- expand macros once
 macroExpandOnceWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
-macroExpandOnceWith macros inputAST =
-  let ignoringMacros = plate . filtered (isNothing . toMacro)
+macroExpandOnceWith macros = transformMOn ignoringMacros subst
   --NOTE: this probably isnt a legal traversal: look into it
-  in  transformMOn ignoringMacros (subst macros) inputAST
-
-subst :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
-subst macros inputAST
-  | isNothing macroCalled = Just inputAST
-  | isCorrectArity = outputAST
-  | otherwise = Nothing
   where
-    possiblyTarget = inputAST ^? _FASTList
-    macroCalled = possiblyTarget ^? _Just . ix 0 . _FASTIdentifier >>=
-      \x -> find ((x ==) . name) macros
-    isCorrectArity = fromMaybe False $ do
-      target <- possiblyTarget
-      macro <- macroCalled
-      Just $ length target == 1 + length (params macro)
+    ignoringMacros = plate . filtered (isNothing . toMacro)
+    subst inputAST =
+      if | isNothing macroCalled -> Just inputAST
+         | isCorrectArity -> outputAST
+         | otherwise -> Nothing
+      where
+        possiblyTarget = inputAST ^? _FASTList
+        macroCalled = possiblyTarget ^? _Just . ix 0 . _FASTIdentifier >>=
+          \x -> find ((x ==) . name) macros
+        isCorrectArity = fromMaybe False $ do
+          target <- possiblyTarget
+          macro <- macroCalled
+          Just $ length target == 1 + length (params macro)
 
-    outputAST = do
-      target <- possiblyTarget
-      macro <- macroCalled
-      let substitutions = M.fromList $ zip (params macro) (drop 1 target)
-          applySub query = fromMaybe query $
-            query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
-      Just $ transform applySub (result macro)
+        outputAST = do
+          target <- possiblyTarget
+          macro <- macroCalled
+          let substitutions = M.fromList $ zip (params macro) (drop 1 target)
+              applySub query = fromMaybe query $
+                query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
+          Just $ transform applySub (result macro)
 
 macroExpand :: InfiniteAST -> Maybe InfiniteAST
 macroExpand inputAST = untilStable (macroExpandOnce =<<) $ Just inputAST
 
 macroExpandOnce :: InfiniteAST -> Maybe InfiniteAST
-macroExpandOnce inputAST =
-  let macros = inputAST ^.. plate . (to toMacro . _Just)
-  in  macroExpandOnceWith macros inputAST
+macroExpandOnce inputAST = macroExpandOnceWith macros inputAST
+  where macros = inputAST ^.. plate . (to toMacro . _Just)
 
 toMacro :: InfiniteAST -> Maybe Macro
 toMacro x = do
