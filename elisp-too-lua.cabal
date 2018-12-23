@@ -46,7 +46,7 @@ library
     , hashable
     , lens
     , generic-lens
-    , megaparsec
+    , megaparsec >= 6.5 && <7
     , text
     , unordered-containers
     , mtl
