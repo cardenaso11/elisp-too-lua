@@ -50,29 +50,31 @@ macroExpandWith macros inputAST =
 -- expand macros once
 macroExpandOnceWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
 macroExpandOnceWith macros inputAST =
-  let ignoringMacros' = plate . filtered (isNothing . toMacro)
-      -- TODO: i think this isnt a legal traversal,,, if possible, try to make one
-  in  foldrM (transformMOn ignoringMacros' . subst) inputAST macros
+  let ignoringMacros = plate . filtered (isNothing . toMacro)
+  --NOTE: this probably isnt a legal traversal: look into it
+  in  transformMOn ignoringMacros (subst macros) inputAST
 
-subst :: Macro -> InfiniteAST -> Maybe InfiniteAST
-subst macro inputAST
-  | not isMacroCall = Just inputAST
+subst :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
+subst macros inputAST
+  | isNothing macroCalled = Just inputAST
   | isCorrectArity = outputAST
   | otherwise = Nothing
   where
     possiblyTarget = inputAST ^? _FASTList
-    isMacroCall = maybe False
-      (\target -> target == FASTIdentifier (name macro))
-      (possiblyTarget ^? _Just . ix 0)
-    isCorrectArity = maybe False
-      (\target -> length target == 1 + length (params macro))
-      possiblyTarget
+    macroCalled = possiblyTarget ^? _Just . ix 0 . _FASTIdentifier >>=
+      \x -> find ((x ==) . name) macros
+    isCorrectArity = fromMaybe False $ do
+      target <- possiblyTarget
+      macro <- macroCalled
+      Just $ length target == 1 + length (params macro)
 
-    outputAST = possiblyTarget <&> \target ->
-        let substitutions = M.fromList $ zip (params macro) (drop 1 target)
-            applySub query = fromMaybe query $
-              query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
-        in  transform applySub (result macro)
+    outputAST = do
+      target <- possiblyTarget
+      macro <- macroCalled
+      let substitutions = M.fromList $ zip (params macro) (drop 1 target)
+          applySub query = fromMaybe query $
+            query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
+      Just $ transform applySub (result macro)
 
 macroExpand :: InfiniteAST -> Maybe InfiniteAST
 macroExpand inputAST = untilStable (macroExpandOnce =<<) $ Just inputAST
