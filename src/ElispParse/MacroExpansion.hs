@@ -79,11 +79,7 @@ toMacro x = do
   macroParams <- form ^? ix 2 . _FASTList
                  >>= traverse (preview _FASTIdentifier)
   macroBody <- form ^? ix 3
-
-  --FIXME: traverse to error on non identifiers is incorrect because of &rest
-
+  pure $ Macro macroName macroParams macroBody
   --TODO: handle alised defmacro
   -- note that this will require more complex checking logic
   -- this is why we're not using pattern matching, if you're wondering
-
-  pure $ Macro macroName macroParams macroBody
