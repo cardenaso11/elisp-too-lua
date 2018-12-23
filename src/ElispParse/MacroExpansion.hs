@@ -1,7 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE MultiWayIf #-}
@@ -17,7 +15,6 @@ module ElispParse.MacroExpansion (
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Maybe
-import Control.Monad
 import Control.Lens
 import qualified GHC.Generics as G
 import Data.Generics.Product
@@ -38,8 +35,7 @@ untilStable f x = fst $ until (uncurry (==)) step seed
         step (_, b) = (b, f b)
 
 macroExpandWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
-macroExpandWith macros inputAST =
-  untilStable (macroExpandOnceWith macros =<< ) $ Just inputAST
+macroExpandWith macros = untilStable (macroExpandOnceWith macros =<<) . Just
 
 -- expand macros once
 macroExpandOnceWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
