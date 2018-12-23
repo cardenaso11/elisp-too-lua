@@ -59,8 +59,8 @@ macroExpandOnceWith macros inputAST =
   in  foldrM (\m -> transformMOn ignoringMacros' (subst m)) inputAST macros
 
 subst :: Macro -> InfiniteAST -> Maybe InfiniteAST
-subst macro inputAST = --trace ("-- SUBST CALLED WITH: macro=" ++ show macro ++ ",inputAST=" ++ show inputAST ++ ",outputAST=" ++ show outputAST ++ " --") $
-  if isNothing macroCalled
+subst macro inputAST =
+  if not isMacroCall
   then Just inputAST
   else
     if isCorrectArity
@@ -68,9 +68,9 @@ subst macro inputAST = --trace ("-- SUBST CALLED WITH: macro=" ++ show macro ++ 
     else Nothing
   where
     possiblyTarget = inputAST ^? _FASTList
-    macroCalled = possiblyTarget >>=
-      (\target -> target ^? ix 0 & mfilter (== FASTIdentifier (name macro)))
-         --listToMaybe target == Just (FASTIdentifier $ name macro))
+    isMacroCall = maybe False
+      (\target -> target == FASTIdentifier (name macro))
+      (possiblyTarget ^? _Just . ix 0)
     isCorrectArity = maybe False
       (\target -> length target == 1 + length (params $ macro))
       possiblyTarget
@@ -79,15 +79,7 @@ subst macro inputAST = --trace ("-- SUBST CALLED WITH: macro=" ++ show macro ++ 
         let substitutions = M.fromList $ zip (params macro) (drop 1 target)
             applySub query = fromMaybe query $
               query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
-            -- applySub' :: InfiniteAST -> Maybe InfiniteAST
-            -- applySub' query = maybe (Just query) (\i -> substitutions ^. at i)
-            --   (query ^? _FASTIdentifier)
         in  transform applySub (result macro)
-
-      -- & mfilter $ \thing -> undefined
-
-      --(\target -> length target == 1 + length (params $ macro)
-      --            && listToMaybe target == Just (FASTIdentifier $ name macro))
 
 -- | Find top-level macro definitions in the AST and expand their use sites.
 macroExpand :: InfiniteAST -> Maybe InfiniteAST
