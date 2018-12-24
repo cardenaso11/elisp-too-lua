@@ -148,7 +148,8 @@ instance (Wrapped (Fix a)) where
 
 instance Rewrapped (Fix a) (Fix a)
 
-instance Plated InfiniteAST
+instance Plated InfiniteAST where
+  plate = _Wrapped . traverse
 
 -- TODO: existing bytecode is going to be hard. we can syntactically transpile
 -- normal functions but any existing bytecode is going to be opaque.
