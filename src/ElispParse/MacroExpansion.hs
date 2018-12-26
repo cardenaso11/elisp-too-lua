@@ -4,6 +4,7 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 
 module ElispParse.MacroExpansion (
     Macro(..)
@@ -19,6 +20,7 @@ import Data.Bool
 import Data.Maybe
 import Data.Bifunctor
 import Control.Arrow ((>>>))
+import Control.Monad
 import Control.Lens
 import qualified GHC.Generics as G
 import Data.Generics.Product
@@ -29,14 +31,15 @@ import ElispParse.Common
 
 data Macro = Macro
   { name :: Identifier
-  , params :: [MacroParameter]
+  , regularParams :: [Identifier]
+  , optionalParams :: [Identifier]
+  , restParam :: Maybe Identifier
   , result :: InfiniteAST
   } deriving (Show, G.Generic)
 
-data MacroParameter = RegularMP Identifier
-                    | OptionalMP Identifier
-                    | RestMP Identifier
-  deriving (Show, G.Generic)
+optionalFlag = Identifier "&optional"
+restFlag = Identifier "&rest"
+nil = Identifier "nil"
 
 untilStable :: forall a. Eq a => (a -> a) -> a -> a
 untilStable f x = fst $ until (uncurry (==)) step seed
@@ -63,34 +66,35 @@ macroExpandOnceWith macros = transformMOn ignoringMacros subst
         isCorrectArity = fromMaybe False $ do
           target <- possiblyTarget
           macro <- macroCalled
-          Just $ length target == 1 + length (params macro)
-
-        optionalFlag = FASTIdentifier_ "&optional"
-        restFlag = FASTIdentifier_ "&rest"
-
-        filterHeadEqual comp xs =
-          bool xs (drop 1 xs)
-          . isJust
-          . preview (_head . only (comp)) $ xs
+          let targetLen = length target
+              regularParamLen = length (regularParams macro)
+              optionalParamLen = length (optionalParams macro)
+          Just $ isJust (restParam macro)
+            || (length target >= 1 + regularParamLen
+                && length target <=
+                 1 + regularParamLen
+                 + optionalParamLen + (fromEnum . isJust . restParam $ macro))
 
         outputAST = do
           target <- possiblyTarget
           macro <- macroCalled
-          let targetParams = drop 1 target
-              (regular, (optionals, rest)) =
-                span (/= optionalFlag) targetParams
-                & second ((span (/= restFlag)) . filterHeadEqual optionalFlag
-                         >>> second (preview $ _tail . _head))
-
-
-                -- & second (second (preview $ _tail . _head)
-                --           . (span (/= restFlag)) . filterHeadEqual optionalFlag)
-                  -- & _1 %~ (traverse (preview _FASTIdentifier))
-          --     substitutions = M.fromList $ zip (params macro) (drop 1 target)
-          --     applySub query = fromMaybe query $
-          --       query ^? _FASTIdentifier >>= \i -> substitutions ^. at i
-          -- Just $ transform applySub (result macro)
-          undefined
+          let targetTail = drop 1 target
+              zippedRegular =
+                zip (regularParams macro) targetTail
+              zippedOptional =
+                zip (optionalParams macro)
+                (drop (length zippedRegular) targetTail
+                 ++ repeat (FASTIdentifier nil))
+              rest =
+                toListOf traverse $ restParam macro
+                <&> (, FASTList $
+                       drop (length zippedRegular + length zippedOptional)
+                       targetTail)
+              substitutions =
+                M.fromList $ zippedRegular ++ zippedOptional ++ rest
+              applySub query = fromMaybe query $
+                (query ^? _FASTIdentifier) >>= \i -> substitutions ^. at i
+          Just $ transform applySub (result macro)
 
 macroExpand :: InfiniteAST -> Maybe InfiniteAST
 macroExpand inputAST = untilStable (macroExpandOnce =<<) $ Just inputAST
@@ -104,11 +108,23 @@ toMacro x = do
   form <- x ^? _FASTList
   form ^? ix 0 . _FASTIdentifier_ . only "defmacro"
   macroName <- form ^? ix 1 . _FASTIdentifier
-  -- macroParams <- form ^? ix 2 . _FASTList
-  --                >>= traverse (preview _FASTIdentifier)
-  macroParams <- undefined
+  macroParams <- form ^? ix 2 . _FASTList
+                 >>= traverse (preview _FASTIdentifier)
+                 & mfilter (\xs -> occurrences optionalFlag xs <= 1
+                                   && occurrences restFlag xs <= 1)
+  let (regular, (optionals, rest)) =
+        break (`elem` [optionalFlag, restFlag]) macroParams
+        & second (span (/= restFlag) . filterHeadEqual optionalFlag
+                   >>> second (preview $ _tail . _head))
   macroBody <- form ^? ix 3
-  pure $ Macro macroName macroParams macroBody
+  pure $ Macro macroName regular optionals rest macroBody
+  where
+    occurrences x = length . filter (==x)
+    filterHeadEqual comp xs =
+        bool xs (drop 1 xs)
+        . isJust
+        . preview (_head . only comp) $ xs
+
   --TODO: handle alised defmacro
   -- note that this will require more complex checking logic
   -- this is why we're not using pattern matching, if you're wondering
