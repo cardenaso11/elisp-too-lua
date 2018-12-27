@@ -6,13 +6,15 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
 
-module ElispParse.MacroExpansion (
+module ElispParse.MacroExpansion
+  (
     Macro(..)
+  , toMacro
   , macroExpand
   , macroExpandOnce
   , macroExpandWith
   , macroExpandOnceWith
-) where
+  ) where
 
 import Data.List (find)
 import qualified Data.Map as M
@@ -35,7 +37,7 @@ data Macro = Macro
   , optionalParams :: [Identifier]
   , restParam :: Maybe Identifier
   , result :: InfiniteAST
-  } deriving (Show, G.Generic)
+  } deriving (Show, Eq, G.Generic)
 
 optionalFlag = Identifier "&optional"
 restFlag = Identifier "&rest"

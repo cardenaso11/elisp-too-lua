@@ -58,7 +58,8 @@ module ElispParse.Common
     , pattern FASTInt
     , pattern FASTChar
     , pattern FASTString
-    , pattern FASTBoolVector ) where
+    , pattern FASTBoolVector
+    , pattern ASTIdentifier_ ) where
 import GHC.Generics
 import Data.Generics.Product
 import Data.Generics.Sum
@@ -276,3 +277,5 @@ pattern FASTInt x = Fix (ASTInt x)
 pattern FASTChar x = Fix (ASTChar x)
 pattern FASTString x = Fix (ASTString x)
 pattern FASTBoolVector x y = Fix (ASTBoolVector x y)
+
+pattern ASTIdentifier_ x = ASTIdentifier (Identifier x)
