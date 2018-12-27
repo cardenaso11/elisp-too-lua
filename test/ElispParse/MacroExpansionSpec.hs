@@ -18,11 +18,11 @@ spec = do
             mRegularParams = [Identifier "x", Identifier "y"]
             mOptionalParams = []
             mRestParam = Nothing
-            mResult = FASTList
+            mResult = FAL
               [
-                FASTIdentifier_ "+"
-              , FASTIdentifier_ "y"
-              , FASTIdentifier_ "x"
+                FAId_ "+"
+              , FAId_ "y"
+              , FAId_ "x"
               ]
         in Macro { name = mName
                   , regularParams = mRegularParams
@@ -30,7 +30,7 @@ spec = do
                   , restParam = mRestParam
                   , result = mResult
                   }
-      macroBar = Macro (Identifier "bar") [] [] Nothing (FASTInt 0)
+      macroBar = Macro (Identifier "bar") [] [] Nothing (FAIn 0)
       macros = [macroFoo, macroBar]
 
 
@@ -42,11 +42,11 @@ spec = do
                 mRegularParams = Identifier <$> ["a", "b", "c"]
                 mOptionalParams = []
                 mRestParam = Nothing
-                mResult = FASTList
-                  [ FASTIdentifier_ "+"
-                  , FASTIdentifier_ "a"
-                  , FASTIdentifier_ "b"
-                  , FASTIdentifier_ "c"
+                mResult = FAL
+                  [ FAId_ "+"
+                  , FAId_ "a"
+                  , FAId_ "b"
+                  , FAId_ "c"
                   ]
             in  Macro { name = mName
                       , regularParams = mRegularParams
@@ -55,15 +55,15 @@ spec = do
                       , result = mResult
                       }
       toMacro
-        (FASTList
-          [ FASTIdentifier_ "defmacro"
-          , FASTIdentifier_ "simple-add-three"
-          , FASTList $ FASTIdentifier_ <$> ["a", "b", "c"]
-          , FASTList
-            [ FASTIdentifier_ "+"
-            , FASTIdentifier_ "a"
-            , FASTIdentifier_ "b"
-            , FASTIdentifier_ "c"
+        (FAL
+          [ FAId_ "defmacro"
+          , FAId_ "simple-add-three"
+          , FAL $ FAId_ <$> ["a", "b", "c"]
+          , FAL
+            [ FAId_ "+"
+            , FAId_ "a"
+            , FAId_ "b"
+            , FAId_ "c"
             ]
           ]) `shouldBe` Just simpleMacro
 
@@ -73,30 +73,29 @@ spec = do
                 mRegularParams = Identifier <$> ["a", "b"]
                 mOptionalParams = Identifier <$> ["c", "d", "e"]
                 mRestParam = Nothing
-                mResult = FASTList
-                  [ FASTIdentifier_ "+"
-                  , FASTIdentifier_ "a"
-                  , FASTIdentifier_ "b"
-                  , FASTIdentifier_ "c"
-                  , FASTIdentifier_ "d"
-                  , FASTIdentifier_ "e"
+                mResult = FAL
+                  [ FAId_ "+"
+                  , FAId_ "a"
+                  , FAId_ "b"
+                  , FAId_ "c"
+                  , FAId_ "d"
+                  , FAId_ "e"
                   ]
             in  Macro mName mRegularParams mOptionalParams mRestParam mResult
 
       toMacro
-        (FASTList
-         [ FASTIdentifier_ "defmacro"
-         , FASTIdentifier_ "optional-add-two-to-five"
-         , FASTList $ FASTIdentifier_ <$> ["a", "b", "&optional", "c", "d", "e"]
-         , FASTList
-                [ FASTIdentifier_ "+"
-                , FASTIdentifier_ "a"
-                , FASTIdentifier_ "b"
-                , FASTIdentifier_ "c"
-                , FASTIdentifier_ "d"
-                , FASTIdentifier_ "e"
-                ]
-
+        (FAL
+         [ FAId_ "defmacro"
+         , FAId_ "optional-add-two-to-five"
+         , FAL $ FAId_ <$> ["a", "b", "&optional", "c", "d", "e"]
+         , FAL
+           [ FAId_ "+"
+           , FAId_ "a"
+           , FAId_ "b"
+           , FAId_ "c"
+           , FAId_ "d"
+           , FAId_ "e"
+           ]
          ]) `shouldBe` Just optionalMacro
 
     it "parses a defmacro macro declaration with an &rest argument" $ do
@@ -105,26 +104,25 @@ spec = do
                 mRegularParams = Identifier <$> ["a", "b"]
                 mOptionalParams = []
                 mRestParam = Just . Identifier $ "everything-else"
-                mResult = FASTList
-                  [ FASTIdentifier_ "+"
-                  , FASTIdentifier_ "a"
-                  , FASTIdentifier_ "b"
-                  , FASTBackquote . Spliced $ ASTIdentifier_ "everything-else"
+                mResult = FAL
+                  [ FAId_ "+"
+                  , FAId_ "a"
+                  , FAId_ "b"
+                  , FABQ . Spliced $ AId_ "everything-else"
                   ]
             in Macro mName mRegularParams mOptionalParams mRestParam mResult
       toMacro
-        (FASTList
-         [ FASTIdentifier_ "defmacro"
-         , FASTIdentifier_ "rest-add-two-or-more"
-         , FASTList $ FASTIdentifier_ <$> ["a", "b", "&rest", "everything-else"]
-         , FASTList
-                  [ FASTIdentifier_ "+"
-                  , FASTIdentifier_ "a"
-                  , FASTIdentifier_ "b"
-                  , FASTBackquote . Spliced $ ASTIdentifier_ "everything-else"
-                  ]
-         ]
-        ) `shouldBe` Just restMacro
+        (FAL
+         [ FAId_ "defmacro"
+         , FAId_ "rest-add-two-or-more"
+         , FAL $ FAId_ <$> ["a", "b", "&rest", "everything-else"]
+         , FAL
+           [ FAId_ "+"
+           , FAId_ "a"
+           , FAId_ "b"
+           , FABQ . Spliced $ AId_ "everything-else"
+           ]
+         ]) `shouldBe` Just restMacro
 
     it "parses a defmacro macro declaration with optional arguments \
        \and an &rest argument" $ do
@@ -133,133 +131,132 @@ spec = do
                 mRegularParams = []
                 mOptionalParams = Identifier <$> ["a", "b"]
                 mRestParam = Just . Identifier $ "everything-else"
-                mResult = FASTList
-                  [ FASTIdentifier_ "+"
-                  , FASTIdentifier_ "a"
-                  , FASTIdentifier_ "b"
-                  , FASTBackquote . Spliced $ ASTIdentifier_ "everything-else"
+                mResult = FAL
+                  [ FAId_ "+"
+                  , FAId_ "a"
+                  , FAId_ "b"
+                  , FABQ . Spliced $ AId_ "everything-else"
                   ]
             in Macro mName mRegularParams mOptionalParams mRestParam mResult
       toMacro
-        (FASTList
-         [ FASTIdentifier_ "defmacro"
-         , FASTIdentifier_ "optional-rest-add-two-or-more"
-         , FASTList $ FASTIdentifier_
+        (FAL
+         [ FAId_ "defmacro"
+         , FAId_ "optional-rest-add-two-or-more"
+         , FAL $ FAId_
            <$> ["&optional", "a", "b", "&rest", "everything-else"]
-         , FASTList
-                  [ FASTIdentifier_ "+"
-                  , FASTIdentifier_ "a"
-                  , FASTIdentifier_ "b"
-                  , FASTBackquote . Spliced $ ASTIdentifier_ "everything-else"
-                  ]
-         ]
-        ) `shouldBe` Just optionalAndRestMacro
+         , FAL
+           [ FAId_ "+"
+           , FAId_ "a"
+           , FAId_ "b"
+           , FABQ . Spliced $ AId_ "everything-else"
+           ]
+         ]) `shouldBe` Just optionalAndRestMacro
 
   describe "macroExpandWith" $ do
       it "has no effect on expressions that don't contain a macro" $ do
-          macroExpandWith macros (FASTInt 1)
-              `shouldBe` Just (FASTInt 1)
+          macroExpandWith macros (FAIn 1)
+              `shouldBe` Just (FAIn 1)
       it "leaves unrelated identifiers alone" $ do
-          macroExpandWith macros (FASTList [FASTIdentifier_ "goo", FASTList [FASTIdentifier (Identifier "bar")]])
-              `shouldBe` Just (FASTList [FASTIdentifier_ "goo", FASTInt 0])
+          macroExpandWith macros (FAL [FAId_ "goo", FAL [FAId_ "bar"]])
+              `shouldBe` Just (FAL [FAId_ "goo", FAIn 0])
       it "expands macros" $ do
-          macroExpandWith macros (FASTList [FASTList [FASTIdentifier_ "foo", FASTInt 2, FASTIdentifier (Identifier "a")]])
-              `shouldBe` Just (FASTList [FASTList [FASTIdentifier_ "+", FASTIdentifier (Identifier "a"), FASTInt 2]])
+          macroExpandWith macros (FAL [FAL [FAId_ "foo", FAIn 2, FAId_ "a"]])
+              `shouldBe` Just (FAL [FAL [FAId_ "+", FAId_ "a", FAIn 2]])
 
   describe "macroExpand" $ do
-      let original = (FASTList [
-              FASTList [
-                  FASTIdentifier_ "defmacro"
-                , FASTIdentifier_ "foo"
-                , FASTList [FASTIdentifier_ "x", FASTIdentifier_ "y"]
-                , FASTList [FASTIdentifier_ "+", FASTIdentifier_ "y", FASTIdentifier_ "x"]
+      let original = (FAL [
+              FAL [
+                  FAId_ "defmacro"
+                , FAId_ "foo"
+                , FAL [FAId_ "x", FAId_ "y"]
+                , FAL [FAId_ "+", FAId_ "y", FAId_ "x"]
                 ]
-            , FASTList [
-                  FASTIdentifier_ "foo"
-                , FASTList [FASTIdentifier_ "a"]
-                , FASTList [FASTIdentifier_ "b"]
+            , FAL [
+                  FAId_ "foo"
+                , FAL [FAId_ "a"]
+                , FAL [FAId_ "b"]
                 ]
             ])
-          expected = (FASTList [
-              FASTList [
-                  FASTIdentifier_ "defmacro"
-                , FASTIdentifier_ "foo"
-                , FASTList [FASTIdentifier_ "x", FASTIdentifier_ "y"]
-                , FASTList [FASTIdentifier_ "+", FASTIdentifier_ "y", FASTIdentifier_ "x"]
+          expected = (FAL [
+              FAL [
+                  FAId_ "defmacro"
+                , FAId_ "foo"
+                , FAL [FAId_ "x", FAId_ "y"]
+                , FAL [FAId_ "+", FAId_ "y", FAId_ "x"]
                 ]
-            , FASTList [
-                  FASTIdentifier_ "+"
-                , FASTList [FASTIdentifier_ "b"]
-                , FASTList [FASTIdentifier_ "a"]
+            , FAL [
+                  FAId_ "+"
+                , FAL [FAId_ "b"]
+                , FAL [FAId_ "a"]
                 ]
             ])
       it "locates and expands macros" $ do
           macroExpand original `shouldBe` Just expected
 
       it "shouldn't find nested macro definitions" $ do
-          macroExpand (FASTList [original]) `shouldBe` Just (FASTList [original])
+          macroExpand (FAL [original]) `shouldBe` Just (FAL [original])
 
       it "fully expands expressions requiring repeated expansion" $ do
-          let original = FASTList [
-                  FASTList [
-                      FASTIdentifier_ "defmacro"
-                    , FASTIdentifier_ "f"
-                    , FASTList [FASTIdentifier_ "n"]
-                    , FASTList [
-                          FASTIdentifier_ "*"
-                        , FASTIdentifier_ "n"
-                        , FASTList [
-                              FASTIdentifier_ "g"
-                            , FASTIdentifier_ "n"
+          let original = FAL [
+                  FAL [
+                      FAId_ "defmacro"
+                    , FAId_ "f"
+                    , FAL [FAId_ "n"]
+                    , FAL [
+                          FAId_ "*"
+                        , FAId_ "n"
+                        , FAL [
+                              FAId_ "g"
+                            , FAId_ "n"
                             ]
                         ]
                     ]
-                , FASTList [
-                      FASTIdentifier_ "defmacro"
-                    , FASTIdentifier_ "g"
-                    , FASTList [FASTIdentifier_ "n"]
-                    , FASTList [
-                          FASTIdentifier_ "+"
-                        , FASTIdentifier_ "n"
-                        , FASTIdentifier_ "1"
+                , FAL [
+                      FAId_ "defmacro"
+                    , FAId_ "g"
+                    , FAL [FAId_ "n"]
+                    , FAL [
+                          FAId_ "+"
+                        , FAId_ "n"
+                        , FAId_ "1"
                         ]
                     ]
-                , FASTList [
-                      FASTIdentifier_ "f"
-                    , FASTIdentifier_ "1"
+                , FAL [
+                      FAId_ "f"
+                    , FAId_ "1"
                     ]
                 ]
-          let expected = FASTList [
-                  FASTList [
-                      FASTIdentifier_ "defmacro"
-                    , FASTIdentifier_ "f"
-                    , FASTList [FASTIdentifier_ "n"]
-                    , FASTList [
-                          FASTIdentifier_ "*"
-                        , FASTIdentifier_ "n"
-                        , FASTList [
-                              FASTIdentifier_ "g"
-                            , FASTIdentifier_ "n"
+          let expected = FAL [
+                  FAL [
+                      FAId_ "defmacro"
+                    , FAId_ "f"
+                    , FAL [FAId_ "n"]
+                    , FAL [
+                          FAId_ "*"
+                        , FAId_ "n"
+                        , FAL [
+                              FAId_ "g"
+                            , FAId_ "n"
                             ]
                         ]
                     ]
-                , FASTList [
-                      FASTIdentifier_ "defmacro"
-                    , FASTIdentifier_ "g"
-                    , FASTList [FASTIdentifier_ "n"]
-                    , FASTList [
-                          FASTIdentifier_ "+"
-                        , FASTIdentifier_ "n"
-                        , FASTIdentifier_ "1"
+                , FAL [
+                      FAId_ "defmacro"
+                    , FAId_ "g"
+                    , FAL [FAId_ "n"]
+                    , FAL [
+                          FAId_ "+"
+                        , FAId_ "n"
+                        , FAId_ "1"
                         ]
                     ]
-                , FASTList [
-                      FASTIdentifier_ "*"
-                    , FASTIdentifier_ "1"
-                    , FASTList [
-                          FASTIdentifier_ "+"
-                        , FASTIdentifier_ "1"
-                        , FASTIdentifier_ "1"
+                , FAL [
+                      FAId_ "*"
+                    , FAId_ "1"
+                    , FAL [
+                          FAId_ "+"
+                        , FAId_ "1"
+                        , FAId_ "1"
                         ]
                     ]
                 ]
