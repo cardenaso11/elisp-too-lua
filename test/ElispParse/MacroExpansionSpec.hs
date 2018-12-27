@@ -13,25 +13,41 @@ import ElispParse.Common
 import ElispParse.MacroExpansion
 
 spec = do
-    let macroFoo = Macro (Identifier "foo") [Identifier "x", Identifier "y"] (FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "y"), FASTIdentifier (Identifier "x")])
-        macroBar = Macro (Identifier "bar") [] (FASTInt 0)
+    let macroFoo =
+          let mName = Identifier "foo"
+              mRegularParams = [Identifier "x", Identifier "y"]
+              mOptionalParams = []
+              mRestParam = Nothing
+              mResult = FASTList
+                [
+                  FASTIdentifier_ "+"
+                , FASTIdentifier_ "y"
+                , FASTIdentifier_ "x"
+                ]
+          in Macro { name = mName
+                   , regularParams = mRegularParams
+                   , optionalParams = mOptionalParams
+                   , restParam = mRestParam
+                   , result = mResult
+                   }
+        macroBar = Macro (Identifier "bar") [] [] Nothing (FASTInt 0)
         macros = [macroFoo, macroBar]
     describe "macroExpandWith" $ do
         it "has no effect on expressions that don't contain a macro" $ do
             macroExpandWith macros (FASTInt 1)
                 `shouldBe` Just (FASTInt 1)
         it "leaves unrelated identifiers alone" $ do
-            macroExpandWith macros (FASTList [FASTIdentifier (Identifier "goo"), FASTList [FASTIdentifier (Identifier "bar")]])
-                `shouldBe` Just (FASTList [FASTIdentifier (Identifier "goo"), FASTInt 0])
+            macroExpandWith macros (FASTList [FASTIdentifier_ "goo", FASTList [FASTIdentifier (Identifier "bar")]])
+                `shouldBe` Just (FASTList [FASTIdentifier_ "goo", FASTInt 0])
         it "expands macros" $ do
-            macroExpandWith macros (FASTList [FASTList [FASTIdentifier (Identifier "foo"), FASTInt 2, FASTIdentifier (Identifier "a")]])
-                `shouldBe` Just (FASTList [FASTList [FASTIdentifier (Identifier "+"), FASTIdentifier (Identifier "a"), FASTInt 2]])
-    
+            macroExpandWith macros (FASTList [FASTList [FASTIdentifier_ "foo", FASTInt 2, FASTIdentifier (Identifier "a")]])
+                `shouldBe` Just (FASTList [FASTList [FASTIdentifier_ "+", FASTIdentifier (Identifier "a"), FASTInt 2]])
+
     describe "macroExpand" $ do
         let original = (FASTList [
                 FASTList [
-                    FASTIdentifier (Identifier "defmacro")
-                  , FASTIdentifier (Identifier "foo")
+                    FASTIdentifier_ "defmacro"
+                  , FASTIdentifier_ "foo"
                   , FASTList [FASTIdentifier_ "x", FASTIdentifier_ "y"]
                   , FASTList [FASTIdentifier_ "+", FASTIdentifier_ "y", FASTIdentifier_ "x"]
                   ]
@@ -43,13 +59,13 @@ spec = do
               ])
             expected = (FASTList [
                 FASTList [
-                    FASTIdentifier (Identifier "defmacro")
-                  , FASTIdentifier (Identifier "foo")
+                    FASTIdentifier_ "defmacro"
+                  , FASTIdentifier_ "foo"
                   , FASTList [FASTIdentifier_ "x", FASTIdentifier_ "y"]
                   , FASTList [FASTIdentifier_ "+", FASTIdentifier_ "y", FASTIdentifier_ "x"]
                   ]
               , FASTList [
-                    FASTIdentifier (Identifier "+")
+                    FASTIdentifier_ "+"
                   , FASTList [FASTIdentifier_ "b"]
                   , FASTList [FASTIdentifier_ "a"]
                   ]
@@ -63,64 +79,64 @@ spec = do
         it "fully expands expressions requiring repeated expansion" $ do
             let original = FASTList [
                     FASTList [
-                        FASTIdentifier (Identifier "defmacro")
-                      , FASTIdentifier (Identifier "f")
-                      , FASTList [FASTIdentifier (Identifier "n")]
+                        FASTIdentifier_ "defmacro"
+                      , FASTIdentifier_ "f"
+                      , FASTList [FASTIdentifier_ "n"]
                       , FASTList [
-                            FASTIdentifier (Identifier "*")
-                          , FASTIdentifier (Identifier "n")
+                            FASTIdentifier_ "*"
+                          , FASTIdentifier_ "n"
                           , FASTList [
-                                FASTIdentifier (Identifier "g")
-                              , FASTIdentifier (Identifier "n")
+                                FASTIdentifier_ "g"
+                              , FASTIdentifier_ "n"
                               ]
                           ]
                       ]
                   , FASTList [
-                        FASTIdentifier (Identifier "defmacro")
-                      , FASTIdentifier (Identifier "g")
-                      , FASTList [FASTIdentifier (Identifier "n")]
+                        FASTIdentifier_ "defmacro"
+                      , FASTIdentifier_ "g"
+                      , FASTList [FASTIdentifier_ "n"]
                       , FASTList [
-                            FASTIdentifier (Identifier "+")
-                          , FASTIdentifier (Identifier "n")
-                          , FASTIdentifier (Identifier "1")
+                            FASTIdentifier_ "+"
+                          , FASTIdentifier_ "n"
+                          , FASTIdentifier_ "1"
                           ]
                       ]
                   , FASTList [
-                        FASTIdentifier (Identifier "f")
-                      , FASTIdentifier (Identifier "1")
+                        FASTIdentifier_ "f"
+                      , FASTIdentifier_ "1"
                       ]
                   ]
             let expected = FASTList [
                     FASTList [
-                        FASTIdentifier (Identifier "defmacro")
-                      , FASTIdentifier (Identifier "f")
-                      , FASTList [FASTIdentifier (Identifier "n")]
+                        FASTIdentifier_ "defmacro"
+                      , FASTIdentifier_ "f"
+                      , FASTList [FASTIdentifier_ "n"]
                       , FASTList [
-                            FASTIdentifier (Identifier "*")
-                          , FASTIdentifier (Identifier "n")
+                            FASTIdentifier_ "*"
+                          , FASTIdentifier_ "n"
                           , FASTList [
-                                FASTIdentifier (Identifier "g")
-                              , FASTIdentifier (Identifier "n")
+                                FASTIdentifier_ "g"
+                              , FASTIdentifier_ "n"
                               ]
                           ]
                       ]
                   , FASTList [
-                        FASTIdentifier (Identifier "defmacro")
-                      , FASTIdentifier (Identifier "g")
-                      , FASTList [FASTIdentifier (Identifier "n")]
+                        FASTIdentifier_ "defmacro"
+                      , FASTIdentifier_ "g"
+                      , FASTList [FASTIdentifier_ "n"]
                       , FASTList [
-                            FASTIdentifier (Identifier "+")
-                          , FASTIdentifier (Identifier "n")
-                          , FASTIdentifier (Identifier "1")
+                            FASTIdentifier_ "+"
+                          , FASTIdentifier_ "n"
+                          , FASTIdentifier_ "1"
                           ]
                       ]
                   , FASTList [
-                        FASTIdentifier (Identifier "*")
-                      , FASTIdentifier (Identifier "1")
+                        FASTIdentifier_ "*"
+                      , FASTIdentifier_ "1"
                       , FASTList [
-                            FASTIdentifier (Identifier "+")
-                          , FASTIdentifier (Identifier "1")
-                          , FASTIdentifier (Identifier "1")
+                            FASTIdentifier_ "+"
+                          , FASTIdentifier_ "1"
+                          , FASTIdentifier_ "1"
                           ]
                       ]
                   ]
