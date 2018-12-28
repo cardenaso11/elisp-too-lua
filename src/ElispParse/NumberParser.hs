@@ -22,27 +22,17 @@ module ElispParse.NumberParser
     ( parseFloat
     , parseInt) where
 
-import GHC.Generics
 import qualified Data.Text.Lazy as T
-import Data.Hashable
-import qualified Data.HashMap.Strict as HM
 import Control.Monad
 import Control.Lens
-import Data.Monoid
 import Data.Maybe
 import Data.Char
 import Data.String
 import qualified Data.Map.Strict as M
-import qualified Data.Functor.Identity
-import Data.Void
-import Data.Proxy
 import Text.Megaparsec as M
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
 
 import ElispParse.CommonInternal
-
-import Debug.Trace
 
 -- | A Sign is either Positive or Negative.
 data Sign where
@@ -90,7 +80,7 @@ evalSign = \case
 -- if it has a dot followed by at least 1 digit, or "NaN", or "INF", float
 parseFloatString :: Parser FloatString
 parseFloatString = do
-    signText <- optional parseSign
+    _ <- optional parseSign
     integerText <- option "0" $ T.pack <$> some digitChar
     let parseExponent =
           string' "e"

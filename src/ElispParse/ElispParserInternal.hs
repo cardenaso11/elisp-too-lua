@@ -6,21 +6,10 @@
 
 module ElispParse.ElispParserInternal (parseProgram, exprFP) where
 
-import GHC.Generics
 import qualified Data.Text.Lazy as T
-import Data.Hashable
-import qualified Data.HashMap.Strict as HM
 import Control.Monad
 import Control.Monad.Reader
-import Control.Monad.ST.Strict
-import Data.STRef.Strict
-import Data.Monoid
 import qualified Data.Vector as V
-import qualified Data.ByteString as BS
-import qualified Data.Functor.Identity
-import Data.Void
-import Data.Fixed
-import Data.Proxy
 import Text.Megaparsec as M
 import Text.Megaparsec.Char
 import Control.Lens
@@ -28,8 +17,6 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import ElispParse.CommonInternal
 import ElispParse.NumberParser
-
-import Debug.Trace
 
 -- | Parse an elisp program as a list of top-level definitions.
 parseProgram :: Parser (AST InfiniteAST)
@@ -79,8 +66,8 @@ parseBackquote bRecurse = lexeme . label "backquote" $
         parseSpliced :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
         parseSpliced recurse = fmap Spliced $ string (",@" :: T.Text) *> recurse
 
-        parseUnquoted :: Parser (AST (BackquotedAST a)) -> ParsecT Void T.Text Identity (BackquotedAST a)
-        parseUnquoted recurse = fmap Unquoted $ char ',' *> bRecurse
+        parseUnquoted :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
+        parseUnquoted _ = fmap Unquoted $ char ',' *> bRecurse
 
         parseQuoted :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
         parseQuoted recurse = Quoted <$> recurse

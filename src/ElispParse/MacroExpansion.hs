@@ -3,7 +3,6 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
 
 module ElispParse.MacroExpansion
@@ -25,8 +24,6 @@ import Control.Arrow ((>>>))
 import Control.Monad
 import Control.Lens
 import qualified GHC.Generics as G
-import Data.Generics.Product
-import Data.Generics.Sum
 import qualified Data.Text.Lazy as T
 
 import ElispParse.CommonInternal
@@ -39,8 +36,13 @@ data Macro = Macro
   , result :: InfiniteAST
   } deriving (Show, Eq, G.Generic)
 
+optionalFlag :: Identifier
 optionalFlag = Identifier "&optional"
+
+restFlag :: Identifier
 restFlag = Identifier "&rest"
+
+nil :: Identifier
 nil = Identifier "nil"
 
 untilStable :: forall a. Eq a => (a -> a) -> a -> a
@@ -68,8 +70,7 @@ macroExpandOnceWith macros = transformMOn ignoringMacros subst
         isCorrectArity = fromMaybe False $ do
           target <- possiblyTarget
           macro <- macroCalled
-          let targetLen = length target
-              regularParamLen = length (regularParams macro)
+          let regularParamLen = length (regularParams macro)
               optionalParamLen = length (optionalParams macro)
           Just $ isJust (restParam macro)
             || (length target >= 1 + regularParamLen
@@ -106,8 +107,8 @@ macroExpandOnce inputAST = macroExpandOnceWith macros inputAST
   where macros = inputAST ^.. plate . (to toMacro . _Just)
 
 toMacro :: InfiniteAST -> Maybe Macro
-toMacro x = do
-  form <- x ^? _FASTList
+toMacro target = do
+  form <- target ^? _FASTList
   form ^? ix 0 . _FASTIdentifier_ . only "defmacro"
   macroName <- form ^? ix 1 . _FASTIdentifier
   macroParams <- form ^? ix 2 . _FASTList
@@ -117,7 +118,7 @@ toMacro x = do
   let (regular, (optionals, rest)) =
         break (`elem` [optionalFlag, restFlag]) macroParams
         & second (span (/= restFlag) . filterHeadEqual optionalFlag
-                   >>> second (preview $ _tail . _head))
+                   >>> second (preview $ ix 1))
   macroBody <- form ^? ix 3
   pure $ Macro macroName regular optionals rest macroBody
   where
