@@ -53,6 +53,7 @@ library
       ElispParse.NumberParser
       ElispParse.MacroExpansion
       LuaGen.Types.Function
+      ElispParse.CommonInternal
   default-language: Haskell2010
 
 executable elisp-too-lua-exe

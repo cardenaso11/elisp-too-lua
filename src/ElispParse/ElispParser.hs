@@ -26,7 +26,7 @@ import Text.Megaparsec.Char
 import Control.Lens
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import ElispParse.Common
+import ElispParse.CommonInternal
 import ElispParse.NumberParser
 
 import Debug.Trace

@@ -40,7 +40,7 @@ import Text.Megaparsec as M
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import ElispParse.Common
+import ElispParse.CommonInternal
 
 import Debug.Trace
 

@@ -29,7 +29,7 @@ import Data.Generics.Product
 import Data.Generics.Sum
 import qualified Data.Text.Lazy as T
 
-import ElispParse.Common
+import ElispParse.CommonInternal
 
 data Macro = Macro
   { name :: Identifier
