@@ -34,6 +34,7 @@ common library-dependencies
     , text
     , unordered-containers
     , mtl
+    , prettyprinter
 
 common test-dependencies
   hs-source-dirs: test
@@ -52,6 +53,7 @@ library
       ElispParse.ElispParser
       ElispParse.NumberParser
       ElispParse.MacroExpansion
+      ElispParse.PrettyPrint
 
       ElispParse.CommonInternal
       ElispParse.ElispParserInternal
