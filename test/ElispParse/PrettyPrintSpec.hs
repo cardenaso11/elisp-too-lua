@@ -39,6 +39,16 @@ spec = do
             show (pretty (FASTCons [FASTInt 1] (FASTInt 2))) `shouldBe` "(1 . 2)"
         it "handles floats" $ do
             show (pretty (FASTFloat 2.71)) `shouldBe` "2.71"
+        it "handles tables" $ do
+            show (pretty (FASTTable [FASTInt 1, FASTInt 2])) `shouldBe` "#s(1 2)"
+        it "handles char-tables" $ do
+            show (pretty (FASTCharTable [FASTInt 1, FASTInt 2])) `shouldBe` "#^[1 2]"
+        it "handles sub-char-tables" $ do
+            show (pretty (FASTCharSubTable [FASTInt 1, FASTInt 2])) `shouldBe` "#^^[1 2]"
+        it "handles bool-vectors" $ do
+            show (pretty (FASTBoolVector 3 "abcde")) `shouldBe` "#&3\"abcde\""
+        it "handles byte-code objects" $ do
+            show (pretty (FASTByteCode [FASTInt 1, FASTInt 2])) `shouldBe` "#[1 2]"
     describe "program" $ do
         it "recognizes ASTs that represent programs" $ do
             let code = "(defun foo () 1)\n(defun bar () 2)"
