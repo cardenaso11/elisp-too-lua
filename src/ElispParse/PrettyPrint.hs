@@ -15,16 +15,12 @@ import Data.Text.Prettyprint.Doc
 {- OVERLAPPING -}
 instance Pretty InfiniteAST where
     pretty = \case
-        FASTList xs -> list xs
+        FASTList xs
+            | any isList xs -> hang 2 $ "(" <> vsep (pretty <$> xs) <> ")"
+            where
+                isList (FASTList _) = True
+                isList _            = False
         Fix x -> pretty x
-        where
-             list xs
-                | any isList xs = "(" <> hang 1 (vsep (pretty <$> xs)) <> ")"
-                | otherwise     = "(" <>        (hsep (pretty <$> xs)) <> ")"
-                where
-                    isList = \case
-                        FASTList _ -> True
-                        _          -> False
 
 {- OVERLAPPING -}
 instance Pretty a => Pretty (AST a) where
