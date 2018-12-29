@@ -1,9 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module ElispParse.PrettyPrint where
 
@@ -12,7 +10,6 @@ import Data.Foldable
 import qualified Data.Text.Lazy as T
 import Data.Text.Prettyprint.Doc
 
-{- OVERLAPPING -}
 instance Pretty InfiniteAST where
     pretty = \case
         FASTList xs
@@ -22,7 +19,6 @@ instance Pretty InfiniteAST where
                 isList _            = False
         Fix x -> pretty x
 
-{- OVERLAPPING -}
 instance Pretty a => Pretty (AST a) where
     pretty = \case
         ASTList xs                   ->          parens xs
