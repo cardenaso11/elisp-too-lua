@@ -1,4 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -10,12 +12,24 @@ import Data.Foldable
 import qualified Data.Text.Lazy as T
 import Data.Text.Prettyprint.Doc
 
-instance Pretty (f (Fix f)) => Pretty (Fix f) where
-    pretty = pretty . unFix
+{- OVERLAPPING -}
+instance Pretty InfiniteAST where
+    pretty = \case
+        FASTList xs -> list xs
+        Fix x -> pretty x
+        where
+             list xs
+                | any isList xs = "(" <> hang 1 (vsep (pretty <$> xs)) <> ")"
+                | otherwise     = "(" <>        (hsep (pretty <$> xs)) <> ")"
+                where
+                    isList = \case
+                        FASTList _ -> True
+                        _          -> False
 
+{- OVERLAPPING -}
 instance Pretty a => Pretty (AST a) where
     pretty = \case
-        ASTList xs                   -> "(" <> hang 2 (vsep (pretty <$> xs)) <> ")"
+        ASTList xs                   ->          parens xs
         ASTQuote x                   -> "'"   <> pretty x
         ASTBackquote x               -> "`"   <> pretty x
         ASTVector (HashableVector v) ->          brackets (toList v)

@@ -8,10 +8,11 @@ module ElispParse.PrettyPrintSpec
 where
 
 import           Test.Hspec
+import qualified Data.Text as LT
 import qualified Data.Text.Lazy as T
 import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
-import           Text.RawString.QQ
+import           NeatInterpolation
 
 import ElispParse.TestCommon
 import ElispParse.Common
@@ -19,12 +20,13 @@ import ElispParse.ElispParser
 import ElispParse.PrettyPrint
 
 spec = do
+    let render' = renderStrict . layoutPretty defaultLayoutOptions
     describe "pretty" $ do
         it "produces pretty backquoted lists" $ do
             let ex = "`(1 ,2 3)"
             shouldRender ex
         it "produces pretty function definitions" $ do
-            let func = "(defun sq (n &optional foo &rest bar) (* n n))"
+            let func = "(defun\n  sq\n  (n &optional foo &rest bar)\n  (* n n))"
             shouldRender func
         it "handles vectors" $ do
             let ex = "[1 2 3]"
@@ -52,18 +54,21 @@ spec = do
         it "handles byte-code objects" $ do
             show (pretty (FASTByteCode [FASTInt 1, FASTInt 2])) `shouldBe` "#[1 2]"
         it "indents code" $ do
-            let code = [r|
-                    (defun my-example-function nil
+            let code = LT.init [text|
+                    (defun
+                      my-example-function
+                      nil
                       (let
-                        (
-                          (a
-                            (do-something))
+                        ((a
+                           (do-something))
                           (b
                             (do-something)))
                         (setq someone me)
-                        (with-current-buffer b
+                        (with-current-buffer
+                          b
                           (do-that
-                            (or this
+                            (or
+                              this
                               (and that those)))
                           (format "%s" a))))|]
             let ast =
@@ -97,16 +102,24 @@ spec = do
                               ]
                           ]
                       ]
-            renderLazy (layoutPretty defaultLayoutOptions (pretty ast)) `shouldBe` code
+            render' (pretty ast) `shouldBe` code
     describe "program" $ do
         it "recognizes ASTs that represent programs" $ do
-            let code = "(defun foo () 1)\n(defun bar () 2)"
+            let code = LT.init [text|
+                    (defun
+                      foo
+                      ()
+                      1)
+                    (defun
+                      bar
+                      ()
+                      2)|]
             let ast =
                     FAL
                       [ FAL [ FAId_ "defun", FAId_ "foo", FAL [], FAIn 1 ]
                       , FAL [ FAId_ "defun", FAId_ "bar", FAL [], FAIn 2 ]
                       ]
-            fmap show (program ast) `shouldBe` Just code
+            fmap render' (program ast) `shouldBe` Just code
 
 shouldRender :: T.Text -> Expectation
 shouldRender ex =
