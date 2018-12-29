@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -8,7 +9,6 @@ module ElispParse.PrettyPrintSpec
 where
 
 import           Test.Hspec
-import qualified Data.Text as LT
 import qualified Data.Text.Lazy as T
 import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
@@ -20,7 +20,6 @@ import ElispParse.ElispParser
 import ElispParse.PrettyPrint
 
 spec = do
-    let render' = renderStrict . layoutPretty defaultLayoutOptions
     describe "pretty" $ do
         it "produces pretty backquoted lists" $ do
             let ex = "`(1 ,2 3)"
@@ -54,7 +53,7 @@ spec = do
         it "handles byte-code objects" $ do
             show (pretty (FASTByteCode [FASTInt 1, FASTInt 2])) `shouldBe` "#[1 2]"
         it "indents code" $ do
-            let code = LT.init [text|
+            let code = T.init $ T.fromStrict [text|
                     (defun
                       my-example-function
                       nil
@@ -102,10 +101,10 @@ spec = do
                               ]
                           ]
                       ]
-            render' (pretty ast) `shouldBe` code
+            render (pretty ast) `shouldBe` code
     describe "program" $ do
         it "recognizes ASTs that represent programs" $ do
-            let code = LT.init [text|
+            let code = T.init $ T.fromStrict [text|
                     (defun
                       foo
                       ()
@@ -119,9 +118,12 @@ spec = do
                       [ FAL [ FAId_ "defun", FAId_ "foo", FAL [], FAIn 1 ]
                       , FAL [ FAId_ "defun", FAId_ "bar", FAL [], FAIn 2 ]
                       ]
-            fmap render' (program ast) `shouldBe` Just code
+            fmap render (program ast) `shouldBe` Just code
+
+render :: Doc a -> T.Text
+render = renderLazy . layoutPretty defaultLayoutOptions
 
 shouldRender :: T.Text -> Expectation
 shouldRender ex =
-    let render = renderLazy . layoutPretty defaultLayoutOptions . pretty
-    in  fmap render (parseText exprFP ex) `shouldBe` Right ex
+    fmap (render . pretty) (parseText exprFP ex)
+        `shouldBe` Right ex
