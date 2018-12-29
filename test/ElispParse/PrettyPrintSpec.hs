@@ -1,5 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module ElispParse.PrettyPrintSpec
     ( spec
@@ -10,6 +11,7 @@ import           Test.Hspec
 import qualified Data.Text.Lazy as T
 import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
+import           Text.RawString.QQ
 
 import ElispParse.TestCommon
 import ElispParse.Common
@@ -49,6 +51,53 @@ spec = do
             show (pretty (FASTBoolVector 3 "abcde")) `shouldBe` "#&3\"abcde\""
         it "handles byte-code objects" $ do
             show (pretty (FASTByteCode [FASTInt 1, FASTInt 2])) `shouldBe` "#[1 2]"
+        it "indents code" $ do
+            let code = [r|
+                    (defun my-example-function nil
+                      (let
+                        (
+                          (a
+                            (do-something))
+                          (b
+                            (do-something)))
+                        (setq someone me)
+                        (with-current-buffer b
+                          (do-that
+                            (or this
+                              (and that those)))
+                          (format "%s" a))))|]
+            let ast =
+                    FAL
+                      [ FAId_ "defun"
+                      , FAId_ "my-example-function"
+                      , FAId_ "nil"
+                      , FAL
+                          [ FAId_ "let"
+                          , FAL
+                              [ FAL [ FAId_ "a", FAL [FAId_ "do-something"] ]
+                              , FAL [ FAId_ "b", FAL [FAId_ "do-something"] ]
+                              ]
+                          , FAL [ FAId_ "setq", FAId_ "someone", FAId_ "me" ]
+                          , FAL 
+                              [ FAId_ "with-current-buffer"
+                              , FAId_ "b"
+                              , FAL
+                                  [ FAId_ "do-that"
+                                  , FAL
+                                      [ FAId_ "or"
+                                      , FAId_ "this"
+                                      , FAL [ FAId_ "and", FAId_ "that", FAId_ "those" ]
+                                      ]
+                                  ]
+                              , FAL
+                                  [ FAId_ "format"
+                                  , FAS "%s"
+                                  , FAId_ "a"
+                                  ]
+                              ]
+                          ]
+                      ]
+            renderLazy (layoutPretty defaultLayoutOptions (pretty ast)) `shouldBe` code
     describe "program" $ do
         it "recognizes ASTs that represent programs" $ do
             let code = "(defun foo () 1)\n(defun bar () 2)"

@@ -15,7 +15,7 @@ instance Pretty (f (Fix f)) => Pretty (Fix f) where
 
 instance Pretty a => Pretty (AST a) where
     pretty = \case
-        ASTList xs                   ->          parens xs
+        ASTList xs                   -> "(" <> hang 2 (vsep (pretty <$> xs)) <> ")"
         ASTQuote x                   -> "'"   <> pretty x
         ASTBackquote x               -> "`"   <> pretty x
         ASTVector (HashableVector v) ->          brackets (toList v)
