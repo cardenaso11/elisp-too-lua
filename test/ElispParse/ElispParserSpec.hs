@@ -85,6 +85,18 @@ spec = do
                             ])
                         , Quoted (ASTInt 4)
                         ])
+            it "parses spliced expressions" $ do
+                shouldParse' (runParseExprFP
+                    "`(1 ,@(2 3 4) 5)")
+                    (FASTBackquote . Quoted . ASTList $
+                        [ Quoted (ASTInt 1)
+                        , Spliced (FASTList
+                            [ FASTInt 2
+                            , FASTInt 3
+                            , FASTInt 4
+                            ])
+                        , Quoted (ASTInt 5)
+                        ])
 
         let emptyVector = FASTVector V.empty
             zeroOneTwo = FASTVector (V.generate 3 FASTInt) in do

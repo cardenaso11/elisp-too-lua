@@ -108,7 +108,7 @@ spec = do
                   [ FAId_ "+"
                   , FAId_ "a"
                   , FAId_ "b"
-                  , FABQ . Spliced $ AId_ "everything-else"
+                  , FABQ . Spliced $ FAId_ "everything-else"
                   ]
             in Macro mName mRegularParams mOptionalParams mRestParam mResult
       toMacro
@@ -120,7 +120,7 @@ spec = do
            [ FAId_ "+"
            , FAId_ "a"
            , FAId_ "b"
-           , FABQ . Spliced $ AId_ "everything-else"
+           , FABQ . Spliced $ FAId_ "everything-else"
            ]
          ]) `shouldBe` Just restMacro
 
@@ -135,7 +135,7 @@ spec = do
                   [ FAId_ "+"
                   , FAId_ "a"
                   , FAId_ "b"
-                  , FABQ . Spliced $ AId_ "everything-else"
+                  , FABQ . Spliced $ FAId_ "everything-else"
                   ]
             in Macro mName mRegularParams mOptionalParams mRestParam mResult
       toMacro
@@ -148,7 +148,7 @@ spec = do
            [ FAId_ "+"
            , FAId_ "a"
            , FAId_ "b"
-           , FABQ . Spliced $ AId_ "everything-else"
+           , FABQ . Spliced $ FAId_ "everything-else"
            ]
          ]) `shouldBe` Just optionalAndRestMacro
 
