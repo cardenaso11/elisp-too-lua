@@ -1,7 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module ElispParse.PrettyPrint where
 
@@ -10,8 +10,14 @@ import Data.Foldable
 import qualified Data.Text.Lazy as T
 import Data.Text.Prettyprint.Doc
 
-instance Pretty (f (Fix f)) => Pretty (Fix f) where
-    pretty = pretty . unFix
+instance Pretty InfiniteAST where
+    pretty = \case
+        FASTList xs
+            | any isList xs -> hang 2 $ "(" <> vsep (pretty <$> xs) <> ")"
+            where
+                isList (FASTList _) = True
+                isList _            = False
+        Fix x -> pretty x
 
 instance Pretty a => Pretty (AST a) where
     pretty = \case

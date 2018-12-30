@@ -60,14 +60,15 @@ parseBackquote bRecurse = lexeme . label "backquote" $
    ASTBackquote . Quoted <$>
    (char '`' *> parseList (parseBackquotedAST backquotedExprFP))
     where
-        parseBackquotedAST recurse =  try (parseSpliced recurse)
-                          <|> try (parseUnquoted recurse)
+        parseBackquotedAST recurse = try parseSpliced
+                          <|> try parseUnquoted
                           <|> try (parseQuoted recurse)
-        parseSpliced :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
-        parseSpliced recurse = fmap Spliced $ string (",@" :: T.Text) *> recurse
 
-        parseUnquoted :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
-        parseUnquoted _ = fmap Unquoted $ char ',' *> bRecurse
+        parseSpliced :: Parser (BackquotedAST a)
+        parseSpliced = Spliced <$> (string (",@" :: T.Text) *> bRecurse)
+
+        parseUnquoted :: Parser (BackquotedAST a)
+        parseUnquoted = Unquoted <$> (char ',' *> bRecurse)
 
         parseQuoted :: Parser (AST (BackquotedAST a)) -> Parser (BackquotedAST a)
         parseQuoted recurse = Quoted <$> recurse

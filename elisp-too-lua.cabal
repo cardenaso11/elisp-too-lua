@@ -44,6 +44,7 @@ common test-dependencies
     , hspec-megaparsec
     , text
     , vector
+    , neat-interpolation
     , raw-strings-qq
 
 library

@@ -1,5 +1,7 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module ElispParse.PrettyPrintSpec
     ( spec
@@ -10,6 +12,7 @@ import           Test.Hspec
 import qualified Data.Text.Lazy as T
 import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
+import           NeatInterpolation
 
 import ElispParse.TestCommon
 import ElispParse.Common
@@ -22,7 +25,7 @@ spec = do
             let ex = "`(1 ,2 3)"
             shouldRender ex
         it "produces pretty function definitions" $ do
-            let func = "(defun sq (n &optional foo &rest bar) (* n n))"
+            let func = "(defun\n  sq\n  (n &optional foo &rest bar)\n  (* n n))"
             shouldRender func
         it "handles vectors" $ do
             let ex = "[1 2 3]"
@@ -49,17 +52,78 @@ spec = do
             show (pretty (FASTBoolVector 3 "abcde")) `shouldBe` "#&3\"abcde\""
         it "handles byte-code objects" $ do
             show (pretty (FASTByteCode [FASTInt 1, FASTInt 2])) `shouldBe` "#[1 2]"
+        it "indents code" $ do
+            let code = T.init $ T.fromStrict [text|
+                    (defun
+                      my-example-function
+                      nil
+                      (let
+                        ((a
+                           (do-something))
+                          (b
+                            (do-something)))
+                        (setq someone me)
+                        (with-current-buffer
+                          b
+                          (do-that
+                            (or
+                              this
+                              (and that those)))
+                          (format "%s" a))))|]
+            let ast =
+                    FAL
+                      [ FAId_ "defun"
+                      , FAId_ "my-example-function"
+                      , FAId_ "nil"
+                      , FAL
+                          [ FAId_ "let"
+                          , FAL
+                              [ FAL [ FAId_ "a", FAL [FAId_ "do-something"] ]
+                              , FAL [ FAId_ "b", FAL [FAId_ "do-something"] ]
+                              ]
+                          , FAL [ FAId_ "setq", FAId_ "someone", FAId_ "me" ]
+                          , FAL 
+                              [ FAId_ "with-current-buffer"
+                              , FAId_ "b"
+                              , FAL
+                                  [ FAId_ "do-that"
+                                  , FAL
+                                      [ FAId_ "or"
+                                      , FAId_ "this"
+                                      , FAL [ FAId_ "and", FAId_ "that", FAId_ "those" ]
+                                      ]
+                                  ]
+                              , FAL
+                                  [ FAId_ "format"
+                                  , FAS "%s"
+                                  , FAId_ "a"
+                                  ]
+                              ]
+                          ]
+                      ]
+            render (pretty ast) `shouldBe` code
     describe "program" $ do
         it "recognizes ASTs that represent programs" $ do
-            let code = "(defun foo () 1)\n(defun bar () 2)"
+            let code = T.init $ T.fromStrict [text|
+                    (defun
+                      foo
+                      ()
+                      1)
+                    (defun
+                      bar
+                      ()
+                      2)|]
             let ast =
                     FAL
                       [ FAL [ FAId_ "defun", FAId_ "foo", FAL [], FAIn 1 ]
                       , FAL [ FAId_ "defun", FAId_ "bar", FAL [], FAIn 2 ]
                       ]
-            fmap show (program ast) `shouldBe` Just code
+            fmap render (program ast) `shouldBe` Just code
+
+render :: Doc a -> T.Text
+render = renderLazy . layoutPretty defaultLayoutOptions
 
 shouldRender :: T.Text -> Expectation
 shouldRender ex =
-    let render = renderLazy . layoutPretty defaultLayoutOptions . pretty
-    in  fmap render (parseText exprFP ex) `shouldBe` Right ex
+    fmap (render . pretty) (parseText exprFP ex)
+        `shouldBe` Right ex
