@@ -56,7 +56,6 @@ macroExpandWith macros = untilStable (macroExpandOnceWith macros =<<) . Just
 -- expand macros once
 macroExpandOnceWith :: [Macro] -> InfiniteAST -> Maybe InfiniteAST
 macroExpandOnceWith macros = transformMOn ignoringMacros subst
-  --NOTE: this probably isnt a legal traversal: look into it
   where
     ignoringMacros = plate . filtered (isNothing . toMacro)
     subst inputAST =
