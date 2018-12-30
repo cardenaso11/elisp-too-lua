@@ -123,7 +123,7 @@ data AST a = ASTList [a]
 --   with Unquoted we cannot re-quote or splice
 data BackquotedAST a = Quoted (AST (BackquotedAST a))
                      | Unquoted a
-                     | Spliced (AST (BackquotedAST a))
+                     | Spliced a
     deriving (Eq, Generic, Show, Hashable, Functor, Foldable, Traversable, Typeable, Data)
 
 -- | Type level fixed-point combinator
