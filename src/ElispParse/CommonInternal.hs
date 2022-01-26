@@ -120,7 +120,14 @@ data AST a = ASTList [a]
 
 -- | A backquoted AST node. Note its polymorphism in its coinduction:
 --   this allows us to guarantee in the types that once we leave the backquote
---   with Unquoted we cannot re-quote or splice
+--   with Unquoted we cannot re-quote or splice.
+--   In simple terms, when you use BackquotedAST, instead of having a plainly
+--   recursive AST (AST (..)) inside like a normal ASTList,
+--   you have an interleaving of BackquotedAST (AST (BackquotedAST (..)),
+--   where only Quoted can continue the interleaving, and Unquoted and Spliced
+--   return back to normal AST (AST (..)). And since ASTBackquote is the only
+--   way to insert a BackquotedAST into an InfiniteAST,
+--   Unquotes and Splices will never appear outside a BackquotedAST.
 data BackquotedAST a = Quoted (AST (BackquotedAST a))
                      | Unquoted a
                      | Spliced a
@@ -139,8 +146,12 @@ deriving newtype instance (Generic (a (Fix a))) => Generic (Fix a)
 deriving instance (Typeable (a (Fix a))) => Typeable (Fix a)
 deriving instance (Typeable a, Data (a (Fix a))) => Data (Fix a)
 
--- | An AST node that is guaranteed to only contain other AST nodes, ending
---   in one of the AST terminals (literals)
+-- | An AST of arbitrary size that is guaranteed to only contain other
+--   AST nodes, ending in one of the AST terminals (literals).
+--   You can think of this as recursively restricting the AST and
+--   ASTBackquote type variables, which guarantees that we'll
+--   never get any nonsense in place of 'a' when creating (or parsing)
+--   an InfiniteAST.
 type InfiniteAST = Fix AST
 
 instance (Wrapped (Fix a)) where
